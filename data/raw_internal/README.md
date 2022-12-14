@@ -1,0 +1,1 @@
+Raw .gz files containing the raw reads, a db/ folder containing the database used for the alignment to obtain taxonomical classification.
