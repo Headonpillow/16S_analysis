@@ -22,13 +22,41 @@ rule all:
     "results/phyloseq/prevalence_graph.png",
     "results/phyloseq/Phyloseq.RData"
 
+#################### ILLUMINA PRIMER REMOVAL
+
+# For that rule to work properly, raw data must necessarely be data that have
+# not underwent any further processing other than demultiplexing.
+
+rule primer_trimming:
+  conda: "16s_analysis.yml"
+  input:
+    expand("data/raw_internal/{id}.fastq.gz", id=IDS)
+  output:
+    expand("intermediate/primer_cleaned/{id}.fastq.gz", id=IDS),
+    expand("logs/cutadapt/{id}.txt", id=IDS)
+  params:
+    F_primer = "CCTACGGGNGGCWGCAG"
+    R_primer = "GACTACHVGGGTATCTAATCC"
+  shell:
+    """
+    for file in data/raw_internal/*.R1.fastq.gz;
+      do
+      SAMPLE=$(echo ${file} | sed "s/.R1\.fastq\.gz//")
+      echo ${SAMPLE}.R1.fastq.gz ${SAMPLE}.R2.fastq.gz
+      cutadapt -g ^'{params.F_primer}' -g ^'{params.R_primer}'\
+      -G ^'{params.R_primer}' -G ^'{params.F_primer}'\
+      -m 200 -M 310 --discard-untrimmed \
+      -o intermediate/primer_cleaned/${SAMPLE}.R1.fastq.gz -p intermediate/primer_cleaned/${SAMPLE}.R2.fastq.gz \
+      ${SAMPLE}.R1.fastq.gz ${SAMPLE}.R2.fastq.gz > logs/cutadapt/summary_${SAMPLE}.txt
+    done
+    """
 
 #################### RULES FOR QUALITY CONTROL AND TRIMMING
 
 rule FastQC:
   conda: "16s_analysis.yml"
   input:
-    expand("data/raw_internal/{id}.fastq.gz", id=IDS)
+    expand("intermediate/primer_cleaned/{id}.fastq.gz", id=IDS)
   output:
     expand("results/fastqc/{id}_fastqc.zip", id=IDS)
   shell:
@@ -51,10 +79,10 @@ rule MultiQC:
     multiqc -n report_R2 results/fastqc/*R2_fastqc.zip -o results/multiQC
     """
 
-rule trim_adapters:
+rule Trim_galore:
   conda: "16s_analysis.yml"
   input:
-    expand("data/raw_internal/{id}.fastq.gz", id=IDS)
+    expand("intermediate/primer_cleaned/{id}.fastq.gz", id=IDS)
   output:
     expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
   shell:
@@ -139,9 +167,7 @@ rule denoise_reads:
     "results/denoising/seqtab.RData"
   params:
     sample_file_loc = "intermediate/trimmed",
-    results_dir = "results/denoising",
-    FWD_len = 250,
-    REV_len = 190
+    results_dir = "results/denoising"
   threads: 16
   script: 
     "code/DADA2_2.0.R"
