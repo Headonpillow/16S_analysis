@@ -33,21 +33,22 @@ rule primer_trimming:
     expand("data/raw_internal/{id}.fastq.gz", id=IDS)
   output:
     expand("intermediate/primer_cleaned/{id}.fastq.gz", id=IDS),
-    expand("logs/cutadapt/{id}.txt", id=IDS)
+    directory("logs/cutadapt")
   params:
-    F_primer = "CCTACGGGNGGCWGCAG"
+    F_primer = "CCTACGGGNGGCWGCAG",
     R_primer = "GACTACHVGGGTATCTAATCC"
   shell:
     """
+    [ ! -d logs/cutadapt ] && mkdir logs/cutadapt
     for file in data/raw_internal/*.R1.fastq.gz;
-      do
-      SAMPLE=$(echo ${file} | sed "s/.R1\.fastq\.gz//")
-      echo ${SAMPLE}.R1.fastq.gz ${SAMPLE}.R2.fastq.gz
+    do
+      SAMPLE=$(echo ${{file}} | sed "s/.R1.fastq.gz//" | sed "s/data\/raw_internal\///")
+      echo ${{SAMPLE}}.R1.fastq.gz ${{SAMPLE}}.R2.fastq.gz
       cutadapt -g ^'{params.F_primer}' -g ^'{params.R_primer}'\
       -G ^'{params.R_primer}' -G ^'{params.F_primer}'\
       -m 200 -M 310 --discard-untrimmed \
-      -o intermediate/primer_cleaned/${SAMPLE}.R1.fastq.gz -p intermediate/primer_cleaned/${SAMPLE}.R2.fastq.gz \
-      ${SAMPLE}.R1.fastq.gz ${SAMPLE}.R2.fastq.gz > logs/cutadapt/summary_${SAMPLE}.txt
+      -o intermediate/primer_cleaned/${{SAMPLE}}.R1.fastq.gz -p intermediate/primer_cleaned/${{SAMPLE}}.R2.fastq.gz \
+      data/raw_internal/${{SAMPLE}}.R1.fastq.gz data/raw_internal/${{SAMPLE}}.R2.fastq.gz > logs/cutadapt/summary_${{SAMPLE}}.txt
     done
     """
 
