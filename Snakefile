@@ -88,7 +88,7 @@ rule Trim_galore:
     expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
   shell:
     """
-    trim_galore --paired data/raw_internal/*fastq.gz -o intermediate/trimmed
+    trim_galore --length 200 --paired data/raw_internal/*fastq.gz -o intermediate/trimmed
     rm intermediate/trimmed/*report.txt
     for f in intermediate/trimmed/*_val_1.fq.gz; do mv -- "$f" "${{f%_val_1.fq.gz}}.fastq.gz"; done
     for f in intermediate/trimmed/*_val_2.fq.gz; do mv -- "$f" "${{f%_val_2.fq.gz}}.fastq.gz"; done
