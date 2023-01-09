@@ -13,10 +13,6 @@ out_dir <- snakemake@params[["results_dir"]]
 input_path <- paste0(script_path, "/", in_dir)
 output_path <- paste0(script_path, "/", out_dir)
 
-# Loading the rest of parameters for DADA2
-FWD_len <- snakemake@params[["FWD_len"]]
-REV_len <- snakemake@params[["REV_len"]]
-
 # Setting the input directory to the correct path
 setwd(input_path)
 
@@ -42,7 +38,7 @@ rplots <- lapply(reverse_reads, quality_plot)
 
 #FILTERING
 
-filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads, reverse_reads, filtered_reverse_reads, truncLen=c(FWD_len,REV_len), multithread=TRUE)
+filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads, reverse_reads, filtered_reverse_reads, multithread=TRUE)
 
 filtered_forward_reads <- filtered_forward_reads[file.exists(filtered_forward_reads)]
 filtered_reverse_reads <- filtered_reverse_reads[file.exists(filtered_reverse_reads)]
@@ -60,7 +56,7 @@ dada_reverse <- dada(filtered_reverse_reads, err=err_reverse_reads, pool=TRUE, m
 
 #MERGE
 
-merged_amplicons <- mergePairs(dada_forward, filtered_forward_reads, dada_reverse, filtered_reverse_reads, verbose=TRUE, maxMismatch=1)
+merged_amplicons <- mergePairs(dada_forward, filtered_forward_reads, dada_reverse, filtered_reverse_reads, verbose=TRUE)
 
 seqtab <- makeSequenceTable(merged_amplicons)
 
