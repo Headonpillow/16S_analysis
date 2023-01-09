@@ -51,7 +51,7 @@ rule MultiQC:
     multiqc -n report_R2 results/fastqc/*R2_fastqc.zip -o results/multiQC
     """
 
-rule trim_adapters:
+rule Trim_galore:
   conda: "16s_analysis.yml"
   input:
     expand("data/raw_internal/{id}.fastq.gz", id=IDS)
@@ -59,7 +59,7 @@ rule trim_adapters:
     expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
   shell:
     """
-    trim_galore --paired data/raw_internal/*fastq.gz -o intermediate/trimmed
+    trim_galore --length 200 --paired data/raw_internal/*fastq.gz -o intermediate/trimmed
     rm intermediate/trimmed/*report.txt
     for f in intermediate/trimmed/*_val_1.fq.gz; do mv -- "$f" "${{f%_val_1.fq.gz}}.fastq.gz"; done
     for f in intermediate/trimmed/*_val_2.fq.gz; do mv -- "$f" "${{f%_val_2.fq.gz}}.fastq.gz"; done
@@ -139,9 +139,7 @@ rule denoise_reads:
     "results/denoising/seqtab.RData"
   params:
     sample_file_loc = "intermediate/trimmed",
-    results_dir = "results/denoising",
-    FWD_len = 250,
-    REV_len = 190
+    results_dir = "results/denoising"
   threads: 16
   script: 
     "code/DADA2_2.0.R"
