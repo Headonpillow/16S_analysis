@@ -55,7 +55,7 @@ filterPhylum <- "unclassified_Bacteria"
 filterOrder <- "Chloroplast"
 filterFamily <- "Mitochondria"
 
-Phyloseq_filt <- subset_taxa(Phyloseq_object, !is.na(phylum) & phylum != filterPhylum)
+Phyloseq_filt <- subset_taxa(Phyloseq_object, !is.na(phylum) | phylum != filterPhylum)
 Phyloseq_filt <- subset_taxa(Phyloseq_filt, order != filterOrder)
 Phyloseq_filt <- subset_taxa(Phyloseq_filt, family != filterFamily)
 
