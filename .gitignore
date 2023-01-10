@@ -2,10 +2,11 @@
 .*
 ~*
 
-# ignore intermediate, logs and scratch dirs
+# ignore intermediate, logs and scratch dirs as well as results
 intermediate
 logs
 scratch
+results
 
 # ignore OS generated files
 .DS_Store
