@@ -17,3 +17,4 @@ dependencies:
   - bioconductor-dada2=1.26.0
   - bioconductor-phyloseq=1.42.0
   - bioconductor-decipher=2.26.0
+  - bioconductor-deseq2=1.38.0

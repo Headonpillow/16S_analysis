@@ -7,6 +7,7 @@ suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(forcats))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(ape))
+suppressPackageStartupMessages(library(DESeq2))
 
 # Snakemake paths and params
 script_path <- getwd()
@@ -44,6 +45,24 @@ sample_info_tab <- arrange(sample_info_tab, order)
 # Finally put all the informations together in a Phyloseq object
 Phyloseq_object <- phyloseq(otu_table(count_tab, taxa_are_rows = TRUE), sample_data(sample_info_tab), tax_table(tax_tab), tree)
 
+############### DESEQ2
+
+deseq_counts <- DESeqDataSetFromMatrix(count_tab, colData = sample_info_tab, design = ~Date)
+deseq_counts_vst <- varianceStabilizingTransformation(deseq_counts)
+# NOTE: If you get this error here with your dataset: "Error in
+# estimateSizeFactorsForMatrix(counts(object), locfunc =locfunc, : every
+# gene contains at least one zero, cannot compute log geometric means", that
+# can be because the count table is sparse with many zeroes, which is common
+# with marker-gene surveys. In that case you'd need to use a specific
+# function first that is equipped to deal with that. You could run:
+# deseq_counts <- estimateSizeFactors(deseq_counts, type = "poscounts")
+# now followed by the transformation function:
+# deseq_counts_vst <- varianceStabilizingTransformation(deseq_counts)
+vst_trans_count_tab <- assay(deseq_counts_vst)
+
+# Now create a phyloseq object with normalized counts
+Phyloseq_object_vst <- phyloseq(otu_table(vst_trans_count_tab, taxa_are_rows = TRUE), sample_data(sample_info_tab), tax_table(tax_tab), tree)
+
 ############### STARTING COMPOSITIONAL CHECK
 
 starting_phyla_table <- table(tax_table(Phyloseq_object)[, "phylum"], exclude = NULL)
@@ -71,6 +90,9 @@ prevalenceThreshold <- 0.03 * nsamples(Phyloseq_filt)
 keepTaxa <- rownames(prevdf)[(prevdf$Prevalence >= prevalenceThreshold)]
 Phyloseq_filt <- prune_taxa(keepTaxa, Phyloseq_filt)
 
+# Make VST Phyloseq comparable to this filtered one
+Phyloseq_filt_vst <- prune_taxa(taxa_names(Phyloseq_filt), Phyloseq_object_vst)
+
 ############### OUTPUTS
 
 setwd(output_path)
@@ -83,4 +105,4 @@ dev.off()
 
 write.table(starting_phyla_table, file="starting_phyla_table.tsv")
 
-save(Phyloseq_object, file="Phyloseq.RData")
+save(Phyloseq_filt, Phyloseq_filt_vst, file="Phyloseq.RData")
