@@ -37,7 +37,7 @@ tree <- read.tree(file="ASV_tree.nwk")
 
 # Load the metadata and check which ones match with the sample names of the files (keep only those)
 setwd(metadata_path)
-sample_info_tab <- read.table("metadata.csv", header=T, row.names=1, check.names=F, sep=",")
+sample_info_tab <- read.table("metadata.tsv", header=T, row.names=1, check.names=F, sep="\t")
 sample_info_tab <- filter(sample_info_tab, rownames(sample_info_tab) %in% samples)
 order <- match(rownames(sample_info_tab), colnames(count_tab))
 sample_info_tab <- arrange(sample_info_tab, order)

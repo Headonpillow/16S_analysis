@@ -181,7 +181,7 @@ rule run_phyloseq:
     "results/asv/ASVs_counts.tsv",
     "results/asv/ASVs_taxonomy.tsv",
     "results/asv/ASV_tree.nwk",
-    "data/meta/metadata.csv"
+    "data/meta/metadata.tsv"
   output:
     "results/phyloseq/starting_phyla_table.tsv",
     "results/phyloseq/prevalence_graph.png",
