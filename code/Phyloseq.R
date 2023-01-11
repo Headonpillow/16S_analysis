@@ -47,17 +47,15 @@ Phyloseq_object <- phyloseq(otu_table(count_tab, taxa_are_rows = TRUE), sample_d
 
 ############### DESEQ2
 
-deseq_counts <- DESeqDataSetFromMatrix(count_tab, colData = sample_info_tab, design = ~Date)
+deseq_counts <- DESeqDataSetFromMatrix(count_tab, colData = sample_info_tab, design = ~breeding_site)
+# Since getting an error with the dataset mosquitoes+water:
+# "Error in estimateSizeFactorsForMatrix(counts(object), locfunc =locfunc, : every
+# gene contains at least one zero, cannot compute log geometric means"
+# It's because the table is quite sparse with many zeroes, so I needed to add the
+# Next command to deal with it.
+# If there is not such problem, next line can be commented.
+deseq_counts <- estimateSizeFactors(deseq_counts, type = "poscounts")
 deseq_counts_vst <- varianceStabilizingTransformation(deseq_counts)
-# NOTE: If you get this error here with your dataset: "Error in
-# estimateSizeFactorsForMatrix(counts(object), locfunc =locfunc, : every
-# gene contains at least one zero, cannot compute log geometric means", that
-# can be because the count table is sparse with many zeroes, which is common
-# with marker-gene surveys. In that case you'd need to use a specific
-# function first that is equipped to deal with that. You could run:
-# deseq_counts <- estimateSizeFactors(deseq_counts, type = "poscounts")
-# now followed by the transformation function:
-# deseq_counts_vst <- varianceStabilizingTransformation(deseq_counts)
 vst_trans_count_tab <- assay(deseq_counts_vst)
 
 # Now create a phyloseq object with normalized counts
