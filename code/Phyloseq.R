@@ -7,6 +7,7 @@ suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(forcats))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(ape))
+suppressPackageStartupMessages(library(DESeq2))
 
 # Snakemake paths and params
 script_path <- getwd()
@@ -36,13 +37,29 @@ tree <- read.tree(file="ASV_tree.nwk")
 
 # Load the metadata and check which ones match with the sample names of the files (keep only those)
 setwd(metadata_path)
-sample_info_tab <- read.table("metadata.csv", header=T, row.names=1, check.names=F, sep=",")
+sample_info_tab <- read.table("metadata.tsv", header=T, row.names=1, check.names=F, sep="\t")
 sample_info_tab <- filter(sample_info_tab, rownames(sample_info_tab) %in% samples)
 order <- match(rownames(sample_info_tab), colnames(count_tab))
 sample_info_tab <- arrange(sample_info_tab, order)
 
 # Finally put all the informations together in a Phyloseq object
 Phyloseq_object <- phyloseq(otu_table(count_tab, taxa_are_rows = TRUE), sample_data(sample_info_tab), tax_table(tax_tab), tree)
+
+############### DESEQ2
+
+deseq_counts <- DESeqDataSetFromMatrix(count_tab, colData = sample_info_tab, design = ~breeding_site)
+# Since getting an error with the dataset mosquitoes+water:
+# "Error in estimateSizeFactorsForMatrix(counts(object), locfunc =locfunc, : every
+# gene contains at least one zero, cannot compute log geometric means"
+# It's because the table is quite sparse with many zeroes, so I needed to add the
+# Next command to deal with it.
+# If there is not such problem, next line can be commented.
+deseq_counts <- estimateSizeFactors(deseq_counts, type = "poscounts")
+deseq_counts_vst <- varianceStabilizingTransformation(deseq_counts)
+vst_trans_count_tab <- assay(deseq_counts_vst)
+
+# Now create a phyloseq object with normalized counts
+Phyloseq_object_vst <- phyloseq(otu_table(vst_trans_count_tab, taxa_are_rows = TRUE), sample_data(sample_info_tab), tax_table(tax_tab), tree)
 
 ############### STARTING COMPOSITIONAL CHECK
 
@@ -71,6 +88,9 @@ prevalenceThreshold <- 0.03 * nsamples(Phyloseq_filt)
 keepTaxa <- rownames(prevdf)[(prevdf$Prevalence >= prevalenceThreshold)]
 Phyloseq_filt <- prune_taxa(keepTaxa, Phyloseq_filt)
 
+# Make VST Phyloseq comparable to this filtered one
+Phyloseq_filt_vst <- prune_taxa(taxa_names(Phyloseq_filt), Phyloseq_object_vst)
+
 ############### OUTPUTS
 
 setwd(output_path)
@@ -83,4 +103,4 @@ dev.off()
 
 write.table(starting_phyla_table, file="starting_phyla_table.tsv")
 
-save(Phyloseq_object, file="Phyloseq.RData")
+save(Phyloseq_filt, Phyloseq_filt_vst, file="Phyloseq.RData")
