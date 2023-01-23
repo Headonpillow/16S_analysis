@@ -1,5 +1,6 @@
 #IDS, = glob_wildcards("{id,[^/]+}.fastq.gz")
 
+# TODO: you should filter shorter sequences, maybe use a jupyter notebook and plot the length of ASVs
 IDS, = glob_wildcards("data/raw_internal/{id}.fastq.gz")
 
 # there is a problem because glob_wildcards read the whole
@@ -171,7 +172,7 @@ rule align_seqs:
     mafft --auto results/asv/ASVs.fa > results/asv/ASV_tree.nwk
     """
 
-#################### RULES FOR PHYLOSEQ ANALYSIS 
+#################### RULES FOR PHYLOSEQ ANALYSIS
 
 # Here the only thing saved is the phyloseq object to be reused
 rule run_phyloseq:
@@ -181,11 +182,13 @@ rule run_phyloseq:
     "results/asv/ASVs_counts.tsv",
     "results/asv/ASVs_taxonomy.tsv",
     "results/asv/ASV_tree.nwk",
+    "results/asv/ASVs.fa",
     "data/meta/metadata.tsv"
   output:
     "results/phyloseq/starting_phyla_table.tsv",
     "results/phyloseq/prevalence_graph.png",
-    "results/phyloseq/Phyloseq.RData"
+    "results/phyloseq/Phyloseq.RData",
+    "results/phyloseq/ASVs_NA.fasta"
   params:
     sample_file_loc = "intermediate/trimmed",
     asv_dir = "results/asv",
