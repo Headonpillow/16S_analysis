@@ -85,12 +85,6 @@ out <- match(NAs, names(ASVs))
 ASVs_NA <- ASVs[out]
 rm(NAs, out)
 
-# Now selecting the actual good ASVs that have been retained in the dataset for the analysis (no Chloroplast, Mitochondria or NA)
-good <- taxa_names(Phyloseq_filt)
-keep <- match(good, names(ASVs))
-ASVs_good <- ASVs[keep]
-rm(good, keep)
-
 # Build prevalence graph for prevalence filtering
 prevdf <- apply(X = otu_table(Phyloseq_filt), MARGIN = ifelse(taxa_are_rows(Phyloseq_filt), yes = 1, no = 2), FUN = function(x){sum(x > 0)})
 prevdf <- data.frame(Prevalence = prevdf, TotalAbundance = taxa_sums(Phyloseq_filt), tax_table(Phyloseq_filt))
@@ -102,6 +96,12 @@ prev_graph <- ggplot(prevdf, aes(TotalAbundance, Prevalence / nsamples(Phyloseq_
 prevalenceThreshold <- 0.03 * nsamples(Phyloseq_filt)
 keepTaxa <- rownames(prevdf)[(prevdf$Prevalence >= prevalenceThreshold)]
 Phyloseq_filt <- prune_taxa(keepTaxa, Phyloseq_filt)
+
+# Now selecting the actual good ASVs that have been retained in the dataset for the analysis (no Chloroplast, Mitochondria or NA)
+good <- taxa_names(Phyloseq_filt)
+keep <- match(good, names(ASVs))
+ASVs_good <- ASVs[keep]
+rm(good, keep)
 
 # Make VST Phyloseq comparable to this filtered one
 Phyloseq_filt_vst <- prune_taxa(taxa_names(Phyloseq_filt), Phyloseq_object_vst)

@@ -204,19 +204,22 @@ rule build_tree:
      "results/phyloseq/ASV_alignment.mafft.treefile"
    shell:
      """
-     iqtree -s results/phyloseq/ASV_alignment.mafft -m K2P -B 1000 -T 4
+     iqtree -s results/phyloseq/ASV_alignment.mafft -m GTR -B 1000 -T 2
      """
 
 # wanna also blast the other ones? why not.
 
 #################### RULES FOR DOWNSTREAM PHYLOGENETIC ANALYSIS
 
+# TODO: need to fix the outputs here, don't want a log file as output
 rule run_phyloseq_analysis:
   conda: "16s_analysis.yml"
   input:
-    "results/phyloseq/ASV_alignment.mafft",
+    "results/phyloseq/ASV_alignment.mafft.treefile",
     "results/phyloseq/Phyloseq.RData"
   params:
     IO_dir = "results/phyloseq"
+  output:
+    "results/log/a.log"
   script:
     "code/Phyloseq.R"
