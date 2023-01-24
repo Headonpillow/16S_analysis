@@ -18,11 +18,13 @@ rule all:
     "results/asv/ASVs.fa", 
     "results/asv/ASVs_counts.tsv",
     "results/asv/ASVs_taxonomy.tsv",
-    "results/asv/ASV_tree.nwk",
     "results/phyloseq/starting_phyla_table.tsv",
     "results/phyloseq/prevalence_graph.png",
-    "results/phyloseq/Phyloseq.RData"
-
+    "results/phyloseq/Phyloseq.RData",
+    "results/phyloseq/ASVs_NA.fasta",
+    "results/phyloseq/ASVs_good.fasta",
+    "results/phyloseq/ASV_alignment.mafft",
+    "results/phyloseq/ASV_alignment.mafft.treefile"
 
 #################### RULES FOR QUALITY CONTROL AND TRIMMING
 
@@ -124,12 +126,6 @@ rule retrieve_samplenames:
 # As you can see, Snakemake also creates the necessary folders when they are 
 # not present during the execution of the script, no need of a rule for them.
 
-# In params there are some parameters that you might be finding useful to
-# change in the DADA2 pipeline, the two truncLen parameters for trimming FWD
-# and REV reads. They might be changed inside the script, but I prefer 
-# keeping "interactive" params changeable here.
-# More parameters could be added in the future.
-
 rule denoise_reads:
   conda: "16s_analysis.yml"
   input:
@@ -141,7 +137,6 @@ rule denoise_reads:
   params:
     sample_file_loc = "intermediate/trimmed",
     results_dir = "results/denoising"
-  threads: 16
   script: 
     "code/DADA2_2.0.R"
 
@@ -161,38 +156,67 @@ rule assign_taxonomy:
   script:
     "code/Taxonomic_assignment.R"
 
-rule align_seqs:
-  conda: "16s_analysis.yml"
-  input:
-    "results/asv/ASVs.fa"
-  output:
-    "results/asv/ASV_tree.nwk"
-  shell:
-    """
-    mafft --auto results/asv/ASVs.fa > results/asv/ASV_tree.nwk
-    """
-
-#################### RULES FOR PHYLOSEQ ANALYSIS
-
-# Here the only thing saved is the phyloseq object to be reused
-rule run_phyloseq:
+# This rule is now doing the filtering of the NA at the phyla level
+# the other thing is that the script code stops at saving the ASVs
+# identified as NA or not and actually these are the ones that need to
+# get aligned for phylogenetic distances and go back in R in the
+# downstream analysis.
+# The rule outputs the fasta files, plus an .RData file to reupload in R
+# with two Physeq objects with both normalized and un-normalized counts.
+rule filter_taxa_and_normalization:
   conda: "16s_analysis.yml"
   input:
     "intermediate/trimmed/samples.txt",
     "results/asv/ASVs_counts.tsv",
     "results/asv/ASVs_taxonomy.tsv",
-    "results/asv/ASV_tree.nwk",
     "results/asv/ASVs.fa",
     "data/meta/metadata.tsv"
   output:
     "results/phyloseq/starting_phyla_table.tsv",
     "results/phyloseq/prevalence_graph.png",
     "results/phyloseq/Phyloseq.RData",
-    "results/phyloseq/ASVs_NA.fasta"
+    "results/phyloseq/ASVs_NA.fasta",
+    "results/phyloseq/ASVs_good.fasta"
   params:
     sample_file_loc = "intermediate/trimmed",
     asv_dir = "results/asv",
     metadata_dir = "data/meta",
     results_dir = "results/phyloseq"
+  script:
+    "code/Taxa_filtering.R"
+
+rule align_seqs:
+  conda: "16s_analysis.yml"
+  input:
+    "results/phyloseq/ASVs_good.fasta"
+  output:
+    "results/phyloseq/ASV_alignment.mafft"
+  shell:
+    """
+    mafft --auto results/phyloseq/ASVs_good.fasta > results/phyloseq/ASV_alignment.mafft
+    """
+
+rule build_tree:
+   conda: "16s_analysis.yml"
+   input:
+     "results/phyloseq/ASV_alignment.mafft"
+   output:
+     "results/phyloseq/ASV_alignment.mafft.treefile"
+   shell:
+     """
+     iqtree -s results/phyloseq/ASV_alignment.mafft -m K2P -B 1000 -T 4
+     """
+
+# wanna also blast the other ones? why not.
+
+#################### RULES FOR DOWNSTREAM PHYLOGENETIC ANALYSIS
+
+rule run_phyloseq_analysis:
+  conda: "16s_analysis.yml"
+  input:
+    "results/phyloseq/ASV_alignment.mafft",
+    "results/phyloseq/Phyloseq.RData"
+  params:
+    IO_dir = "results/phyloseq"
   script:
     "code/Phyloseq.R"
