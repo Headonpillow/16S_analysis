@@ -18,7 +18,7 @@ for i in files:
 R1 = list()
 
 for i in seq:
-    if "R1" in i:
+    if "R1.f" in i:
         R1.append(i)
 
 names = list()
