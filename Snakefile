@@ -204,7 +204,7 @@ rule build_tree:
      "results/phyloseq/ASV_alignment.mafft.treefile"
    shell:
      """
-     iqtree -s results/phyloseq/ASV_alignment.mafft -m GTR -T 4
+     iqtree -s results/phyloseq/ASV_alignment.mafft -m MFP -T 16 --redo-tree
      """
 
 # wanna also blast the other ones? why not.
