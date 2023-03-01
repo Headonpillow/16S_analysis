@@ -23,7 +23,8 @@ rule all:
     "results/phyloseq/ASVs_NA.fasta",
     "results/phyloseq/ASVs_good.fasta",
     "results/phyloseq/ASV_alignment.mafft",
-    "results/phyloseq/ASV_alignment.mafft.treefile"
+    "results/phyloseq/ASV_alignment.mafft.treefile",
+    "results/phyloseq/plots/plot_1.tiff"
 
 #################### RULES FOR QUALITY CONTROL AND TRIMMING
 
