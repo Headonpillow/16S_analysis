@@ -1,6 +1,5 @@
 #IDS, = glob_wildcards("{id,[^/]+}.fastq.gz")
 
-# TODO: you should filter shorter sequences, maybe use a jupyter notebook and plot the length of ASVs
 IDS, = glob_wildcards("data/raw_internal/{id}.fastq.gz")
 
 # there is a problem because glob_wildcards read the whole
@@ -204,7 +203,7 @@ rule build_tree:
      "results/phyloseq/ASV_alignment.mafft.treefile"
    shell:
      """
-     iqtree -s results/phyloseq/ASV_alignment.mafft -m MFP -T 16 --redo-tree
+     iqtree -s results/phyloseq/ASV_alignment.mafft -m MFP -T AUTO --redo-tree
      """
 
 # wanna also blast the other ones? why not.
@@ -218,8 +217,9 @@ rule run_phyloseq_analysis:
     "results/phyloseq/ASV_alignment.mafft.treefile",
     "results/phyloseq/Phyloseq.RData"
   params:
-    IO_dir = "results/phyloseq"
+    in_dir = "results/phyloseq",
+    out_dir = "results/phyloseq/plots"
   output:
-    "results/log/a.log"
+    "results/phyloseq/plots/plot_1.tiff"
   script:
     "code/Phyloseq.R"

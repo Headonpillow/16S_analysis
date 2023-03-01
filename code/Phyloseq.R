@@ -10,19 +10,24 @@ suppressPackageStartupMessages(library(vegan))
 
 # Snakemake paths and params
 script_path <- getwd()
-IO_dir <- snakemake@params[["IO_dir"]]
-IO_path <- paste0(script_path, "/", IO_dir)
+in_dir <- snakemake@params[["in_dir"]]
+out_dir <- snakemake@params[["out_dir"]]
+in_path <- paste0(script_path, "/", in_dir)
+out_path <- paste0(script_path, "/", out_dir)
 
 ############### PHYLOSEQ ANALYSIS
 
 # Start with loading RData containing Phyloseq objects and the tree
-setwd(IO_path)
+setwd(in_path)
 load(file="Phyloseq.RData")
 tree <- read_tree(treefile="ASV_alignment.mafft.treefile")
 
 # Adding the tree into the phyloseq objects for the use of phylogenetic distance measures
 Phyloseq_filt <- merge_phyloseq(Phyloseq_filt, tree)
 Phyloseq_filt_vst <- merge_phyloseq(Phyloseq_filt_vst, tree)
+
+# Save them again
+save(Phyloseq_filt, Phyloseq_filt_vst, file="Phyloseq.RData")
 
 ############### BETA DIVERSITY PRELIMINARY FIGURES
 
@@ -36,6 +41,7 @@ for (distance in distances) {
 }
 
 # TODO: make some of the fields of the metadata factors, because they are still seen as numeric like "date"
+# TODO: plots fail in the case that metadata file is just one column, probably a bug in Phyloseq. Column should be at least two, even if one is just samples. Maybe I can just print a warning.
 
 ordinations <- list(euclidean.OD, manhattan.OD, unifrac.OD, wunifrac.OD)
 
@@ -55,6 +61,9 @@ for (metadata in metadata_fields) {
 }
 
 rm(i, name)
+
+# Change the output path
+setwd(out_path)
 
 i <- 0
 for (plot in plot_list) {
