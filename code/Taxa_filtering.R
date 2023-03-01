@@ -49,13 +49,15 @@ Phyloseq_object <- phyloseq(otu_table(count_tab, taxa_are_rows = TRUE), sample_d
 ############### DESEQ2
 
 # TODO: you need to make this command general by taking a random variable from meta as design
-deseq_counts <- DESeqDataSetFromMatrix(count_tab, colData = sample_info_tab, design = ~breeding_site)
+metadata_fields <- colnames(data.frame(sample_data(Phyloseq_object)))
+deseq_counts <- DESeqDataSetFromMatrix(count_tab, colData = sample_info_tab, design = ~metadata_fields[1])
 # Since getting an error with the dataset mosquitoes+water:
 # "Error in estimateSizeFactorsForMatrix(counts(object), locfunc =locfunc, : every
 # gene contains at least one zero, cannot compute log geometric means"
 # It's because the table is quite sparse with many zeroes, so I needed to add the
 # Next command to deal with it.
 # If there is not such problem, next line can be commented.
+# TODO: this also fails if one column has all 0 counts, so samples with all 0's should be filtered out
 deseq_counts <- estimateSizeFactors(deseq_counts, type = "poscounts")
 deseq_counts_vst <- varianceStabilizingTransformation(deseq_counts)
 vst_trans_count_tab <- assay(deseq_counts_vst)
@@ -85,6 +87,7 @@ out <- match(NAs, names(ASVs))
 ASVs_NA <- ASVs[out]
 rm(NAs, out)
 
+# TODO: maybe this is not totally correct, if you have samples of different types. So maybe it'd be better to separate samples of different types like mosquitoes and water before filtering on prevalence.
 # Build prevalence graph for prevalence filtering
 prevdf <- apply(X = otu_table(Phyloseq_filt), MARGIN = ifelse(taxa_are_rows(Phyloseq_filt), yes = 1, no = 2), FUN = function(x){sum(x > 0)})
 prevdf <- data.frame(Prevalence = prevdf, TotalAbundance = taxa_sums(Phyloseq_filt), tax_table(Phyloseq_filt))
