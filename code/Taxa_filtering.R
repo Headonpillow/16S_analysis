@@ -48,9 +48,9 @@ Phyloseq_object <- phyloseq(otu_table(count_tab, taxa_are_rows = TRUE), sample_d
 
 ############### DESEQ2
 
-# TODO: you need to make this command general by taking a random variable from meta as design
+# This takes the first metadata column of the file, apparently the design formula in this case is not important
 metadata_fields <- colnames(data.frame(sample_data(Phyloseq_object)))
-deseq_counts <- DESeqDataSetFromMatrix(count_tab, colData = sample_info_tab, design = ~metadata_fields[1])
+deseq_counts <- DESeqDataSetFromMatrix(count_tab, colData = sample_info_tab, design = as.formula(paste("~", metadata_fields[1])))
 # Since getting an error with the dataset mosquitoes+water:
 # "Error in estimateSizeFactorsForMatrix(counts(object), locfunc =locfunc, : every
 # gene contains at least one zero, cannot compute log geometric means"
