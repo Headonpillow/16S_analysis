@@ -211,7 +211,6 @@ rule build_tree:
 
 #################### RULES FOR DOWNSTREAM PHYLOGENETIC ANALYSIS
 
-# TODO: need to fix the outputs here, don't want a log file as output
 rule run_phyloseq_analysis:
   conda: "16s_analysis.yml"
   input:
@@ -224,3 +223,6 @@ rule run_phyloseq_analysis:
     "results/phyloseq/plots/plot_1.tiff"
   script:
     "code/Phyloseq.R"
+
+# TODO: add a feature for users to use their own ASV and TAX table?
+# TODO: add error messages for stuff like sequencing not merging etc.
