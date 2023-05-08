@@ -51,6 +51,7 @@ Phyloseq_object <- phyloseq(otu_table(count_tab, taxa_are_rows = TRUE), sample_d
 # This takes the first metadata column of the file, apparently the design formula in this case is not important
 metadata_fields <- colnames(data.frame(sample_data(Phyloseq_object)))
 deseq_counts <- DESeqDataSetFromMatrix(count_tab, colData = sample_info_tab, design = as.formula(paste("~", metadata_fields[1])))
+# TODO: implementing formula ~1 ? Because this equals to no formula, how correct is that?
 # Since getting an error with the dataset mosquitoes+water:
 # "Error in estimateSizeFactorsForMatrix(counts(object), locfunc =locfunc, : every
 # gene contains at least one zero, cannot compute log geometric means"
