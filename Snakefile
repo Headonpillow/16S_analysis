@@ -163,6 +163,9 @@ rule assign_taxonomy:
 # downstream analysis.
 # The rule outputs the fasta files, plus an .RData file to reupload in R
 # with two Physeq objects with both normalized and un-normalized counts.
+
+# TODO: correct the location where the good and bad ASVs are out, it doesn't make sense they're 
+# in the Phyloseq directory.
 rule filter_taxa_and_normalization:
   conda: "16s_analysis.yml"
   input:
