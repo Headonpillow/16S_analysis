@@ -3,11 +3,14 @@
 ~*
 
 # ignore intermediate, logs and scratch dirs as well as results
-intermediate/*
-logs/*
+intermediate/trimmed
+logs/*.log
 scratch/*
-results/*
-data/*
+
+# ignore data files
+*.fastq.gz
+*.RData
+*.tsv
 
 # ignore snakemake dag files
 *.pdf
