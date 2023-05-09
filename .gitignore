@@ -3,11 +3,11 @@
 ~*
 
 # ignore intermediate, logs and scratch dirs as well as results
-intermediate
-logs
-scratch
-results
-data
+intermediate/*
+logs/*
+scratch/*
+results/*
+data/*
 
 # ignore snakemake dag files
 *.pdf
