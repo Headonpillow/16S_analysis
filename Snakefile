@@ -34,10 +34,11 @@ rule FastQC:
     expand("data/raw_internal/{id}.fastq.gz", id=IDS)
   output:
     expand("results/fastqc/{id}_fastqc.zip", id=IDS)
+  log: "logs/FastQC.log"
   shell:
     """
     [ ! -d results/fastqc ] && mkdir results/fastqc
-    fastqc -o results/fastqc data/raw_internal/*.gz
+    fastqc -o results/fastqc data/raw_internal/*.gz > logs/FastQC.log 
     """
 
 rule MultiQC:
@@ -60,9 +61,10 @@ rule Trim_galore:
     expand("data/raw_internal/{id}.fastq.gz", id=IDS)
   output:
     expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
+  log: "logs/Trim_galore.log"
   shell:
     """
-    trim_galore --length 200 --paired data/raw_internal/*fastq.gz -o intermediate/trimmed
+    trim_galore --length 200 --paired data/raw_internal/*fastq.gz -o intermediate/trimmed > logs/Trim_galore.log 
     rm intermediate/trimmed/*report.txt
     for f in intermediate/trimmed/*_val_1.fq.gz; do mv -- "$f" "${{f%_val_1.fq.gz}}.fastq.gz"; done
     for f in intermediate/trimmed/*_val_2.fq.gz; do mv -- "$f" "${{f%_val_2.fq.gz}}.fastq.gz"; done
@@ -74,10 +76,11 @@ rule FastQC_trimmed:
     expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
   output:
     expand("results/fastqc_trimmed/{id}_fastqc.zip", id=IDS)
+  log: "logs/FastQC_trimmed.log"
   shell:
     """
     [ ! -d results/fastqc_trimmed ] && mkdir results/fastqc_trimmed
-    fastqc -o results/fastqc_trimmed intermediate/trimmed/*.gz
+    fastqc -o results/fastqc_trimmed intermediate/trimmed/*.gz > logs/FastQC_trimmed.log 
     """
 
 rule MultiQC_trimmed:
@@ -194,21 +197,23 @@ rule align_seqs:
     "results/phyloseq/ASVs_good.fasta"
   output:
     "results/phyloseq/ASV_alignment.mafft"
+  log: "logs/align_seqs.log"
   shell:
     """
-    mafft --auto results/phyloseq/ASVs_good.fasta > results/phyloseq/ASV_alignment.mafft
+    mafft --auto results/phyloseq/ASVs_good.fasta > results/phyloseq/ASV_alignment.mafft > logs/align_seqs.log
     """
 
 rule build_tree:
-   conda: "16s_analysis.yml"
-   input:
-     "results/phyloseq/ASV_alignment.mafft"
-   output:
-     "results/phyloseq/ASV_alignment.mafft.treefile"
-   shell:
-     """
-     iqtree -s results/phyloseq/ASV_alignment.mafft -m MFP -T AUTO --redo-tree
-     """
+  conda: "16s_analysis.yml"
+  input:
+    "results/phyloseq/ASV_alignment.mafft"
+  output:
+    "results/phyloseq/ASV_alignment.mafft.treefile"
+  log: "logs/build_tree.log" 
+  shell:
+    """
+    iqtree -s results/phyloseq/ASV_alignment.mafft -m MFP -T AUTO --redo-tree > logs/build_tree.log
+    """
 
 # wanna also blast the other ones? why not.
 
