@@ -6,6 +6,7 @@
 intermediate/trimmed
 logs/*.log
 scratch/*
+results/*
 
 # ignore data files
 *.fastq.gz
@@ -23,3 +24,4 @@ Thumbs.db
 # Whitelisted files
 # -------------------------
 !.gitignore
+!README.md
