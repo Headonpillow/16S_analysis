@@ -1,6 +1,6 @@
 #IDS, = glob_wildcards("{id,[^/]+}.fastq.gz")
 
-IDS, = glob_wildcards("data/raw_internal/{id}.fastq.gz")
+IDS, = glob_wildcards("data/raw_external/{id}.fastq.gz")
 
 # there is a problem because glob_wildcards read the whole
 # directory + subdirectory, maybe to solve later implementing 
@@ -31,14 +31,14 @@ rule all:
 rule FastQC:
   conda: "16s_analysis.yml"
   input:
-    expand("data/raw_internal/{id}.fastq.gz", id=IDS)
+    expand("data/raw_external/{id}.fastq.gz", id=IDS)
   output:
     expand("results/fastqc/{id}_fastqc.zip", id=IDS)
   log: "logs/FastQC.log"
   shell:
     """
     [ ! -d results/fastqc ] && mkdir results/fastqc
-    fastqc -o results/fastqc data/raw_internal/*.gz > logs/FastQC.log 
+    fastqc -o results/fastqc data/raw_external/*.gz > logs/FastQC.log 
     """
 
 rule MultiQC:
@@ -58,13 +58,13 @@ rule MultiQC:
 rule Trim_galore:
   conda: "16s_analysis.yml"
   input:
-    expand("data/raw_internal/{id}.fastq.gz", id=IDS)
+    expand("data/raw_external/{id}.fastq.gz", id=IDS)
   output:
     expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
   log: "logs/Trim_galore.log"
   shell:
     """
-    trim_galore --length 200 --paired data/raw_internal/*fastq.gz -o intermediate/trimmed > logs/Trim_galore.log 
+    trim_galore --length 200 --paired data/raw_external/*fastq.gz -o intermediate/trimmed > logs/Trim_galore.log 
     rm intermediate/trimmed/*report.txt
     for f in intermediate/trimmed/*_val_1.fq.gz; do mv -- "$f" "${{f%_val_1.fq.gz}}.fastq.gz"; done
     for f in intermediate/trimmed/*_val_2.fq.gz; do mv -- "$f" "${{f%_val_2.fq.gz}}.fastq.gz"; done
@@ -153,7 +153,7 @@ rule assign_taxonomy:
     "results/asv/ASVs_counts.tsv",
     "results/asv/ASVs_taxonomy.tsv"
   params:
-    database = "data/raw_internal/db/SILVA_SSU_r138_2019.RData",
+    database = "data/db/SILVA_SSU_r138_2019.RData",
     dada_files_dir = "results/denoising",
     results_dir = "results/asv"
   script:
