@@ -7,7 +7,6 @@ intermediate/trimmed
 logs/*.log
 scratch/*
 results/*
-data/db/
 
 # ignore data files
 *.fastq.gz
