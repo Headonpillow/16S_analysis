@@ -61,9 +61,12 @@ merged_amplicons <- mergePairs(dada_forward, filtered_forward_reads, dada_revers
 
 seqtab <- makeSequenceTable(merged_amplicons)
 
+#REMOVE SHORT SEQS
+seqtab2 <- seqtab[,nchar(colnames(seqtab)) %in% 410:470]
+
 #CHIMERA REMOVAL
 
-seqtab.nochim <- removeBimeraDenovo(seqtab, verbose=T, method = "consensus", multithread = TRUE)
+seqtab.nochim <- removeBimeraDenovo(seqtab2, verbose=T, method = "consensus", multithread = TRUE)
 
 ########### Set working directory to output path
 setwd(output_path)
