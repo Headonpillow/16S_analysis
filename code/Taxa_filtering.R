@@ -29,16 +29,16 @@ samples <- scan(file="samples.txt", what="character")
 
 # Now loading the ASVs count_table and the ASVs tax_table
 setwd(asv_files_path)
-count_tab <- read.table("ASVs_counts.tsv", header=T, row.names=1, check.names=F, sep="\t")
+count_tab <- read.table("ASVs_counts.tsv", header=T, row.names=1, check.names=F, sep="\t", fill=TRUE)
 # Replace colnames of count_table with the actual sample names
 colnames(count_tab) <- samples
-tax_tab <- as.matrix(read.table("ASVs_taxonomy.tsv", header=T, row.names=1, check.names=F, sep="\t"))
+tax_tab <- as.matrix(read.table("ASVs_taxonomy.tsv", header=T, row.names=1, check.names=F, sep="\t"), fill=TRUE)
 # Also, read the ASVs sequences for further processing and for selecting the NAs to blast
 ASVs <- read.fasta("ASVs.fa")
 
 # Load the metadata and check which ones match with the sample names of the files (keep only those)
 setwd(metadata_path)
-sample_info_tab <- read.table("metadata.tsv", header=T, row.names=1, check.names=F, sep="\t")
+sample_info_tab <- read.table("metadata.tsv", header=T, row.names=1, check.names=F, sep="\t", fill=TRUE)
 sample_info_tab <- filter(sample_info_tab, rownames(sample_info_tab) %in% samples)
 order <- match(rownames(sample_info_tab), colnames(count_tab))
 sample_info_tab <- arrange(sample_info_tab, order)
