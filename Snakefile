@@ -34,11 +34,10 @@ rule FastQC:
     expand("data/raw_external/{id}.fastq.gz", id=IDS)
   output:
     expand("results/fastqc/{id}_fastqc.zip", id=IDS)
-  log: "logs/FastQC.log"
   shell:
     """
     [ ! -d results/fastqc ] && mkdir results/fastqc
-    fastqc -o results/fastqc data/raw_external/*.gz > logs/FastQC.log 
+    fastqc -o results/fastqc data/raw_external/*.gz
     """
 
 rule MultiQC:
@@ -61,10 +60,9 @@ rule Trim_galore:
     expand("data/raw_external/{id}.fastq.gz", id=IDS)
   output:
     expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
-  log: "logs/Trim_galore.log"
   shell:
     """
-    trim_galore --length 200 --paired data/raw_external/*fastq.gz -o intermediate/trimmed > logs/Trim_galore.log 
+    trim_galore --length 200 --paired data/raw_external/*fastq.gz -o intermediate/trimmed
     rm intermediate/trimmed/*report.txt
     for f in intermediate/trimmed/*_val_1.fq.gz; do mv -- "$f" "${{f%_val_1.fq.gz}}.fastq.gz"; done
     for f in intermediate/trimmed/*_val_2.fq.gz; do mv -- "$f" "${{f%_val_2.fq.gz}}.fastq.gz"; done
@@ -76,11 +74,10 @@ rule FastQC_trimmed:
     expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
   output:
     expand("results/fastqc_trimmed/{id}_fastqc.zip", id=IDS)
-  log: "logs/FastQC_trimmed.log"
   shell:
     """
     [ ! -d results/fastqc_trimmed ] && mkdir results/fastqc_trimmed
-    fastqc -o results/fastqc_trimmed intermediate/trimmed/*.gz > logs/FastQC_trimmed.log 
+    fastqc -o results/fastqc_trimmed intermediate/trimmed/*.gz
     """
 
 rule MultiQC_trimmed:
@@ -197,10 +194,9 @@ rule align_seqs:
     "results/phyloseq/ASVs_good.fasta"
   output:
     "results/phyloseq/ASV_alignment.mafft"
-  log: "logs/align_seqs.log"
   shell:
     """
-    mafft --auto results/phyloseq/ASVs_good.fasta > results/phyloseq/ASV_alignment.mafft > logs/align_seqs.log
+    mafft --auto results/phyloseq/ASVs_good.fasta > results/phyloseq/ASV_alignment.mafft
     """
 
 rule build_tree:
@@ -209,10 +205,9 @@ rule build_tree:
     "results/phyloseq/ASV_alignment.mafft"
   output:
     "results/phyloseq/ASV_alignment.mafft.treefile"
-  log: "logs/build_tree.log" 
   shell:
     """
-    iqtree -s results/phyloseq/ASV_alignment.mafft -m MFP -T AUTO --redo-tree > logs/build_tree.log
+    iqtree -s results/phyloseq/ASV_alignment.mafft -m MFP -T AUTO --redo-tree
     """
 
 # wanna also blast the other ones? why not.
@@ -234,3 +229,4 @@ rule run_phyloseq_analysis:
 
 # TODO: add a feature for users to use their own ASV and TAX table?
 # TODO: add error messages for stuff like sequencing not merging etc.
+# TODO: add logs for some tools
