@@ -58,7 +58,7 @@ count_tab <- data.frame(otu_table(Phyloseq_object))
 
 # The formula has been set to "formula ~1" because this equals to no formula, since we are not using this data for differential expression.
 metadata_fields <- colnames(data.frame(sample_data(Phyloseq_object)))
-deseq_counts <- DESeqDataSetFromMatrix(count_tab, colData = sample_info_tab, design = formula ~1)
+deseq_counts <- DESeqDataSetFromMatrix(count_tab, colData = sample_info_tab, design = ~1)
 # Since getting an error with the dataset mosquitoes+water:
 # "Error in estimateSizeFactorsForMatrix(counts(object), locfunc =locfunc, : every
 # gene contains at least one zero, cannot compute log geometric means"
