@@ -46,19 +46,25 @@ sample_info_tab <- arrange(sample_info_tab, order)
 # Finally put all the informations together in a Phyloseq object
 Phyloseq_object <- phyloseq(otu_table(count_tab, taxa_are_rows = TRUE), sample_data(sample_info_tab), tax_table(tax_tab))
 
+# Filter all the samples with 0 counts
+zero_counts <- colSums(otu_table(Phyloseq_object))==0
+Phyloseq_object <- prune_samples(!zero_counts, Phyloseq_object)
+
 ############### DESEQ2
 
-# This takes the first metadata column of the file, apparently the design formula in this case is not important
+# Retrieve data from the filtered Phyloseq in data.frame format:
+sample_info_tab <- data.frame(sample_data(Phyloseq_object))
+count_tab <- data.frame(otu_table(Phyloseq_object))
+
+# The formula has been set to "formula ~1" because this equals to no formula, since we are not using this data for differential expression.
 metadata_fields <- colnames(data.frame(sample_data(Phyloseq_object)))
-deseq_counts <- DESeqDataSetFromMatrix(count_tab, colData = sample_info_tab, design = as.formula(paste("~", metadata_fields[1])))
-# TODO: implementing formula ~1 ? Because this equals to no formula, how correct is that?
+deseq_counts <- DESeqDataSetFromMatrix(count_tab, colData = sample_info_tab, design = formula ~1)
 # Since getting an error with the dataset mosquitoes+water:
 # "Error in estimateSizeFactorsForMatrix(counts(object), locfunc =locfunc, : every
 # gene contains at least one zero, cannot compute log geometric means"
 # It's because the table is quite sparse with many zeroes, so I needed to add the
 # Next command to deal with it.
 # If there is not such problem, next line can be commented.
-# TODO: this also fails if one column has all 0 counts, so samples with all 0's should be filtered out
 deseq_counts <- estimateSizeFactors(deseq_counts, type = "poscounts")
 deseq_counts_vst <- varianceStabilizingTransformation(deseq_counts)
 vst_trans_count_tab <- assay(deseq_counts_vst)
