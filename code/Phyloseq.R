@@ -31,6 +31,7 @@ info <- sample_data(Phyloseq_filt)
 rm <- names(info)[sapply(info, function(x) sum(is.na(x)) == length(x))]
 info <- info[, !colnames(info) %in% rm]
 sample_data(Phyloseq_filt) <- info
+sample_data(Phyloseq_filt_vst) <- info
 rm(info, rm)
 
 # Save them again
