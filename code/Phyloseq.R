@@ -26,6 +26,11 @@ tree <- read_tree(treefile="ASV_alignment.mafft.treefile")
 Phyloseq_filt <- merge_phyloseq(Phyloseq_filt, tree)
 Phyloseq_filt_vst <- merge_phyloseq(Phyloseq_filt_vst, tree)
 
+# Also, removing columns in the metadata if one column is all NAs
+info <- sample_data(Phyloseq_filt)
+rm <- names(info)[sapply(info, function(x) sum(is.na(x)) == length(x))]
+info <- info[, !colnames(info) %in% rm]
+
 # Save them again
 save(Phyloseq_filt, Phyloseq_filt_vst, file="Phyloseq.RData")
 
