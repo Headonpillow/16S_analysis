@@ -30,6 +30,8 @@ Phyloseq_filt_vst <- merge_phyloseq(Phyloseq_filt_vst, tree)
 info <- sample_data(Phyloseq_filt)
 rm <- names(info)[sapply(info, function(x) sum(is.na(x)) == length(x))]
 info <- info[, !colnames(info) %in% rm]
+sample_data(Phyloseq_filt) <- info
+rm(info, rm)
 
 # Save them again
 save(Phyloseq_filt, Phyloseq_filt_vst, file="Phyloseq.RData")
