@@ -50,6 +50,8 @@ Phyloseq_object <- phyloseq(otu_table(count_tab, taxa_are_rows = TRUE), sample_d
 zero_counts <- colSums(otu_table(Phyloseq_object))==0
 Phyloseq_object <- prune_samples(!zero_counts, Phyloseq_object)
 
+paste0("WARN: samples", zero_counts, "have been filtered out because they had 0 counts.")
+
 ############### DESEQ2
 
 # Retrieve data from the filtered Phyloseq in data.frame format:
