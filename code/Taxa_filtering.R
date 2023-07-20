@@ -49,8 +49,18 @@ Phyloseq_object <- phyloseq(otu_table(count_tab, taxa_are_rows = TRUE), sample_d
 # Filter all the samples with 0 counts
 zero_counts <- colSums(otu_table(Phyloseq_object))==0
 Phyloseq_object <- prune_samples(!zero_counts, Phyloseq_object)
+condition <- all(zero_counts == FALSE)
 
-paste0("WARN: samples", zero_counts, "have been filtered out because they had 0 counts.")
+if(condition == TRUE){
+    cat("\n")
+    cat("No samples were removed.")
+    cat("\n")
+} else{
+    cat("\n")
+    filtered <- which(zero_counts == TRUE)
+    cat(paste("WARN: sample", names(zero_counts[filtered]), "have been filtered out because it had 0 counts."))
+    cat("\n")
+}
 
 ############### DESEQ2
 
