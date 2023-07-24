@@ -21,7 +21,7 @@ setwd(script_path)
 load(db)
 
 dna <- DNAStringSet(getSequences(seqtab.nochim))
-tax_info <- IdTaxa(test=dna, trainingSet=trainingSet, strand="both", processors=NULL, threshold=60)
+tax_info <- IdTaxa(test=dna, trainingSet=trainingSet, strand="both", processors=NULL, threshold=50)
 
 #RENAMING ASVs
 
