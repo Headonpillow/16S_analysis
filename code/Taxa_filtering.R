@@ -138,5 +138,5 @@ write.fasta(sequences=ASVs_good, names=names(ASVs_good), file.out="ASVs_good.fas
 
 write.table(starting_phyla_table, file="starting_phyla_table.tsv")
 
-save(Phyloseq_filt, Phyloseq_filt_vst, file="Phyloseq.RData")
+save(Phyloseq_object, Phyloseq_filt, Phyloseq_filt_vst, file="Phyloseq.RData")
 save.image(file = "phyl.RData")
