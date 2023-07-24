@@ -62,7 +62,7 @@ merged_amplicons <- mergePairs(dada_forward, filtered_forward_reads, dada_revers
 seqtab <- makeSequenceTable(merged_amplicons)
 
 #REMOVE SHORT SEQS
-seqtab2 <- seqtab[,nchar(colnames(seqtab)) %in% 410:470]
+seqtab2 <- seqtab[,nchar(colnames(seqtab)) %in% 350:470]
 
 #CHIMERA REMOVAL
 
