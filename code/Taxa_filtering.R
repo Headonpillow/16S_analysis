@@ -112,13 +112,6 @@ prevdf <- apply(X = otu_table(Phyloseq_filt), MARGIN = ifelse(taxa_are_rows(Phyl
 prevdf <- data.frame(Prevalence = prevdf, TotalAbundance = taxa_sums(Phyloseq_filt), tax_table(Phyloseq_filt))
 prev_graph <- ggplot(prevdf, aes(TotalAbundance, Prevalence / nsamples(Phyloseq_filt), color = phylum))
 
-# Filter by prevalence setting a threshold of 3%
-# Basically this kind of filtering is supposed to improve the downstream pipeline removing contaminants.
-# The filter removes taxa that are present in less than 3% of the samples. (so very rare sequences)
-prevalenceThreshold <- 0.03 * nsamples(Phyloseq_filt)
-keepTaxa <- rownames(prevdf)[(prevdf$Prevalence >= prevalenceThreshold)]
-Phyloseq_filt <- prune_taxa(keepTaxa, Phyloseq_filt)
-
 # Now selecting the actual good ASVs that have been retained in the dataset for the analysis (no Chloroplast, Mitochondria or NA)
 good <- taxa_names(Phyloseq_filt)
 keep <- match(good, names(ASVs))
