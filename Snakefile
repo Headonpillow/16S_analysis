@@ -6,93 +6,120 @@ IDS, = glob_wildcards("data/raw_external/{id}.fastq.gz")
 # directory + subdirectory, maybe to solve later implementing 
 # other directories, for now excluding "/" works
 
+# Here's a conditional statement to check whether the user
+# running the pipeline wants the QC and primer removal to happen
+# or not.
+# Based on that the input list for rule all will be different.
+myoutput = ["results/denoising/read_count_tracking.tsv",
+"results/denoising/qc.pdf",
+"results/asv/ASVs.fa", 
+"results/asv/ASVs_counts.tsv",
+"results/asv/ASVs_taxonomy.tsv",
+"results/phyloseq/starting_phyla_table.tsv",
+"results/phyloseq/prevalence_graph.png",
+"results/phyloseq/Phyloseq.RData",
+"results/phyloseq/ASVs_NA.fasta",
+"results/phyloseq/ASVs_good.fasta",
+"results/phyloseq/ASV_alignment.mafft",
+"results/phyloseq/ASV_alignment.mafft.treefile",
+"results/phyloseq/plots/plot_1.tiff"]
+
+if config['preprocess'] in ["yes"]:
+  extended = ["results/multiQC/report_R1.html", 
+  "results/multiQC/report_R2.html",
+  "results/multiQC_trimmed/report_R1.html",
+  "results/multiQC_trimmed/report_R2.html"]
+  myoutput = myoutput + extended
+
+print(myoutput)
+
 rule all: 
   input:
-    "results/multiQC/report_R1.html", 
-    "results/multiQC/report_R2.html",
-    "results/multiQC_trimmed/report_R1.html",
-    "results/multiQC_trimmed/report_R2.html",
-    "results/denoising/read_count_tracking.tsv",
-    "results/denoising/qc.pdf",
-    "results/asv/ASVs.fa", 
-    "results/asv/ASVs_counts.tsv",
-    "results/asv/ASVs_taxonomy.tsv",
-    "results/phyloseq/starting_phyla_table.tsv",
-    "results/phyloseq/prevalence_graph.png",
-    "results/phyloseq/Phyloseq.RData",
-    "results/phyloseq/ASVs_NA.fasta",
-    "results/phyloseq/ASVs_good.fasta",
-    "results/phyloseq/ASV_alignment.mafft",
-    "results/phyloseq/ASV_alignment.mafft.treefile",
-    "results/phyloseq/plots/plot_1.tiff"
+    myoutput
 
 #################### RULES FOR QUALITY CONTROL AND TRIMMING
 
-rule FastQC:
-  conda: "16s_analysis.yml"
-  input:
-    expand("data/raw_external/{id}.fastq.gz", id=IDS)
-  output:
-    expand("results/fastqc/{id}_fastqc.zip", id=IDS)
-  shell:
-    """
-    [ ! -d results/fastqc ] && mkdir results/fastqc
-    fastqc -o results/fastqc data/raw_external/*.gz
-    """
+# Here's a second conditional statement to check according
+# to what the user chose to run or not the preprocessing
 
-rule MultiQC:
-  conda: "16s_analysis.yml"
-  input:
-    expand("results/fastqc/{id}_fastqc.zip", id=IDS)
-  output:
-    "results/multiQC/report_R1.html",
-    "results/multiQC/report_R2.html"
-  shell:
-    """
-    [ ! -d results/multiQC ] && mkdir results/multiQC
-    multiqc -n report_R1 results/fastqc/*R1_fastqc.zip -o results/multiQC
-    multiqc -n report_R2 results/fastqc/*R2_fastqc.zip -o results/multiQC
-    """
+if config['preprocess'] in ["yes"]:
 
-rule Trim_galore:
-  conda: "16s_analysis.yml"
-  input:
-    expand("data/raw_external/{id}.fastq.gz", id=IDS)
-  output:
-    expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
-  shell:
-    """
-    trim_galore --length 200 --paired data/raw_external/*fastq.gz -o intermediate/trimmed
-    rm intermediate/trimmed/*report.txt
-    for f in intermediate/trimmed/*_val_1.fq.gz; do mv -- "$f" "${{f%_val_1.fq.gz}}.fastq.gz"; done
-    for f in intermediate/trimmed/*_val_2.fq.gz; do mv -- "$f" "${{f%_val_2.fq.gz}}.fastq.gz"; done
-    """
+  rule FastQC:
+    conda: "16s_analysis.yml"
+    input:
+      expand("data/raw_external/{id}.fastq.gz", id=IDS)
+    output:
+      expand("results/fastqc/{id}_fastqc.zip", id=IDS)
+    shell:
+      """
+      [ ! -d results/fastqc ] && mkdir results/fastqc
+      fastqc -o results/fastqc data/raw_external/*.gz
+      """
 
-rule FastQC_trimmed:
-  conda: "16s_analysis.yml"
-  input: 
-    expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
-  output:
-    expand("results/fastqc_trimmed/{id}_fastqc.zip", id=IDS)
-  shell:
-    """
-    [ ! -d results/fastqc_trimmed ] && mkdir results/fastqc_trimmed
-    fastqc -o results/fastqc_trimmed intermediate/trimmed/*.gz
-    """
+  rule MultiQC:
+    conda: "16s_analysis.yml"
+    input:
+      expand("results/fastqc/{id}_fastqc.zip", id=IDS)
+    output:
+      "results/multiQC/report_R1.html",
+      "results/multiQC/report_R2.html"
+    shell:
+      """
+      [ ! -d results/multiQC ] && mkdir results/multiQC
+      multiqc -n report_R1 results/fastqc/*R1_fastqc.zip -o results/multiQC
+      multiqc -n report_R2 results/fastqc/*R2_fastqc.zip -o results/multiQC
+      """
 
-rule MultiQC_trimmed:
-  conda: "16s_analysis.yml"
-  input:
-    expand("results/fastqc_trimmed/{id}_fastqc.zip", id=IDS)
-  output:
-    "results/multiQC_trimmed/report_R1.html",
-    "results/multiQC_trimmed/report_R2.html"
-  shell:
-    """
-    [ ! -d results/multiQC_trimmed ] && mkdir results/multiQC_trimmed
-    multiqc -n report_R1 results/fastqc_trimmed/*R1_fastqc.zip -o results/multiQC_trimmed
-    multiqc -n report_R2 results/fastqc_trimmed/*R2_fastqc.zip -o results/multiQC_trimmed
-    """
+  rule Trim_galore:
+    conda: "16s_analysis.yml"
+    input:
+      expand("data/raw_external/{id}.fastq.gz", id=IDS)
+    output:
+      expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
+    shell:
+      """
+      trim_galore --length 200 --paired data/raw_external/*fastq.gz -o intermediate/trimmed
+      rm intermediate/trimmed/*report.txt
+      for f in intermediate/trimmed/*_val_1.fq.gz; do mv -- "$f" "${{f%_val_1.fq.gz}}.fastq.gz"; done
+      for f in intermediate/trimmed/*_val_2.fq.gz; do mv -- "$f" "${{f%_val_2.fq.gz}}.fastq.gz"; done
+      """
+
+  rule FastQC_trimmed:
+    conda: "16s_analysis.yml"
+    input: 
+      expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
+    output:
+      expand("results/fastqc_trimmed/{id}_fastqc.zip", id=IDS)
+    shell:
+      """
+      [ ! -d results/fastqc_trimmed ] && mkdir results/fastqc_trimmed
+      fastqc -o results/fastqc_trimmed intermediate/trimmed/*.gz
+      """
+
+  rule MultiQC_trimmed:
+    conda: "16s_analysis.yml"
+    input:
+      expand("results/fastqc_trimmed/{id}_fastqc.zip", id=IDS)
+    output:
+      "results/multiQC_trimmed/report_R1.html",
+      "results/multiQC_trimmed/report_R2.html"
+    shell:
+      """
+      [ ! -d results/multiQC_trimmed ] && mkdir results/multiQC_trimmed
+      multiqc -n report_R1 results/fastqc_trimmed/*R1_fastqc.zip -o results/multiQC_trimmed
+      multiqc -n report_R2 results/fastqc_trimmed/*R2_fastqc.zip -o results/multiQC_trimmed
+      """
+
+else:
+  rule move_raw_files_to_trimmed:
+    input:
+      expand("data/raw_external/{id}.fastq.gz", id=IDS)
+    output:
+      expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
+    shell:
+      """
+      cp data/raw_external/*.gz intermediate/trimmed
+      """
 
 #################### RULES FOR DENOISING AND TAX ASSIGNMENT 
 

@@ -26,4 +26,21 @@ The intended contents of each directory is explained in separate README.md files
 snakemake --use-conda --cores all all
 ```
 
+There are some parameters that you might want to use in the command line,
+one of them is:
+
+``` {bash}
+--config preprocess="value"
+```
+
+Where value can be either "yes" or "no", the choice indicates if you want snakemake
+to use preprocessing steps that include:
+
+1. Generating fastqc files
+2. Summarizing fastqc files with MultiQC
+3. Trimming sequences with Trim_galore
+
+> Just note that trimming doesn't happen in the pipeline when using DADA2, so if no pre-processing
+takes place, the sequences will not be trimmed at all.
+
 > the **--cores** flag just specify the amount of cores to use, you can select what you think works best.
