@@ -100,11 +100,18 @@ Phyloseq_filt <- subset_taxa(Phyloseq_filt, order != filterOrder)
 Phyloseq_filt <- subset_taxa(Phyloseq_filt, family != filterFamily)
 
 # Now determine who are the NAs ASVs (from the ASVs fasta file with sequences) and select them
-NAs <- subset_taxa(Phyloseq_object, is.na(phylum) | phylum == filterPhylum)
-NAs <- taxa_names(NAs)
-out <- match(NAs, names(ASVs))
-ASVs_NA <- ASVs[out]
-rm(NAs, out)
+# Checking first if there is any NA on the phylum level, otherwise the subset
+# throws an error.
+
+condition <- any(is.na(data.frame(tax_table(Phyloseq_object))$phylum))
+
+if(condition == TRUE){
+  NAs <- subset_taxa(Phyloseq_object, is.na(phylum) | phylum == filterPhylum)
+  NAs <- taxa_names(NAs)
+  out <- match(NAs, names(ASVs))
+  ASVs_NA <- ASVs[out]
+  rm(NAs, out)
+}
 
 # TODO: maybe this is not totally correct, if you have samples of different types. So maybe it'd be better to separate samples of different types like mosquitoes and water before filtering on prevalence.
 # Build prevalence graph for prevalence filtering
