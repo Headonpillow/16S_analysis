@@ -62,6 +62,8 @@ if(condition == TRUE){
     cat("\n")
 }
 
+rm(condition)
+
 ############### DESEQ2
 
 # Retrieve data from the filtered Phyloseq in data.frame format:
@@ -106,11 +108,19 @@ Phyloseq_filt <- subset_taxa(Phyloseq_filt, family != filterFamily)
 condition <- any(is.na(data.frame(tax_table(Phyloseq_object))$phylum))
 
 if(condition == TRUE){
-  NAs <- subset_taxa(Phyloseq_object, is.na(phylum) | phylum == filterPhylum)
-  NAs <- taxa_names(NAs)
-  out <- match(NAs, names(ASVs))
-  ASVs_NA <- ASVs[out]
-  rm(NAs, out)
+    cat("\n")
+    cat("Some ASVs were not identified, or not bacteria, they have been 
+    removed and stored in ASVs_NA")
+    cat("\n")
+    NAs <- subset_taxa(Phyloseq_object, is.na(phylum) | phylum == filterPhylum)
+    NAs <- taxa_names(NAs)
+    out <- match(NAs, names(ASVs))
+    ASVs_NA <- ASVs[out]
+    rm(NAs, out)
+    setwd(output_path)
+    # write a fasta file containing all the sequences that have not
+    # been identified
+    write.fasta(sequences=ASVs_NA, names=names(ASVs_NA), file.out="ASVs_NA.fasta")
 }
 
 # TODO: maybe this is not totally correct, if you have samples of different types. So maybe it'd be better to separate samples of different types like mosquitoes and water before filtering on prevalence.
@@ -138,8 +148,6 @@ prev_graph + geom_hline(yintercept = 0.02, alpha = 0.2, linetype = 2) + geom_poi
 
 dev.off()
 
-# Also, write a fasta file containing all the sequences that have not been identified
-write.fasta(sequences=ASVs_NA, names=names(ASVs_NA), file.out="ASVs_NA.fasta")
 # And a fasta containing the sequences identified by SILVA
 write.fasta(sequences=ASVs_good, names=names(ASVs_good), file.out="ASVs_good.fasta")
 
