@@ -18,7 +18,6 @@ myoutput = ["results/denoising/read_count_tracking.tsv",
 "results/phyloseq/starting_phyla_table.tsv",
 "results/phyloseq/prevalence_graph.png",
 "results/phyloseq/Phyloseq.RData",
-"results/phyloseq/ASVs_NA.fasta",
 "results/phyloseq/ASVs_good.fasta",
 "results/phyloseq/ASV_alignment.mafft",
 "results/phyloseq/ASV_alignment.mafft.treefile",
@@ -205,7 +204,6 @@ rule filter_taxa_and_normalization:
     "results/phyloseq/starting_phyla_table.tsv",
     "results/phyloseq/prevalence_graph.png",
     "results/phyloseq/Phyloseq.RData",
-    "results/phyloseq/ASVs_NA.fasta",
     "results/phyloseq/ASVs_good.fasta"
   params:
     sample_file_loc = "intermediate/trimmed",
