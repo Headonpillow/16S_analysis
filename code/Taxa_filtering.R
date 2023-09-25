@@ -66,7 +66,7 @@ if(condition == TRUE){
 
 # Retrieve data from the filtered Phyloseq in data.frame format:
 sample_info_tab <- data.frame(sample_data(Phyloseq_object))
-count_tab <- data.frame(otu_table(Phyloseq_object))
+count_tab <- as.data.frame(otu_table(Phyloseq_object))
 
 # The formula has been set to "formula ~1" because this equals to no formula, since we are not using this data for differential expression.
 metadata_fields <- colnames(data.frame(sample_data(Phyloseq_object)))
