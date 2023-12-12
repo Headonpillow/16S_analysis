@@ -20,11 +20,6 @@ out_path <- paste0(script_path, "/", out_dir)
 # Start with loading RData containing Phyloseq objects and the tree
 setwd(in_path)
 load(file="Phyloseq.RData")
-tree <- read_tree(treefile="ASV_alignment.mafft.treefile")
-
-# Adding the tree into the phyloseq objects for the use of phylogenetic distance measures
-Phyloseq_filt <- merge_phyloseq(Phyloseq_filt, tree)
-Phyloseq_filt_vst <- merge_phyloseq(Phyloseq_filt_vst, tree)
 
 # Also, removing columns in the metadata if one column is all NAs
 info <- sample_data(Phyloseq_filt)
@@ -40,7 +35,7 @@ save(Phyloseq_filt, Phyloseq_filt_vst, file="Phyloseq.RData")
 ############### BETA DIVERSITY PRELIMINARY FIGURES
 
 metadata_fields <- colnames(data.frame(sample_data(Phyloseq_filt_vst)))
-distances <- c("euclidean", "manhattan", "unifrac", "wunifrac")
+distances <- c("euclidean", "manhattan")
 
 for (distance in distances) {
   name <- paste(distance, "OD", sep=".")
@@ -51,7 +46,7 @@ for (distance in distances) {
 # TODO: make some of the fields of the metadata factors, because they are still seen as numeric like "date"
 # TODO: plots fail in the case that metadata file is just one column, probably a bug in Phyloseq. Column should be at least two, even if one is just samples. Maybe I can just print a warning.
 
-ordinations <- list(euclidean.OD, manhattan.OD, unifrac.OD, wunifrac.OD)
+ordinations <- list(euclidean.OD, manhattan.OD)
 
 plot_list <- list()
 i <- 0
