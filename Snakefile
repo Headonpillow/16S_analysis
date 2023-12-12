@@ -19,8 +19,6 @@ myoutput = ["results/denoising/read_count_tracking.tsv",
 "results/phyloseq/prevalence_graph.png",
 "results/phyloseq/Phyloseq.RData",
 "results/phyloseq/ASVs_good.fasta",
-"results/phyloseq/ASV_alignment.mafft",
-"results/phyloseq/ASV_alignment.mafft.treefile",
 "results/phyloseq/plots/plot_1.tiff"]
 
 if config['preprocess'] in ["yes"]:
@@ -213,28 +211,6 @@ rule filter_taxa_and_normalization:
   script:
     "code/Taxa_filtering.R"
 
-rule align_seqs:
-  conda: "16s_analysis.yml"
-  input:
-    "results/phyloseq/ASVs_good.fasta"
-  output:
-    "results/phyloseq/ASV_alignment.mafft"
-  shell:
-    """
-    mafft --auto results/phyloseq/ASVs_good.fasta > results/phyloseq/ASV_alignment.mafft
-    """
-
-rule build_tree:
-  conda: "16s_analysis.yml"
-  input:
-    "results/phyloseq/ASV_alignment.mafft"
-  output:
-    "results/phyloseq/ASV_alignment.mafft.treefile"
-  shell:
-    """
-    iqtree -s results/phyloseq/ASV_alignment.mafft -m MFP -T AUTO --redo-tree
-    """
-
 # wanna also blast the other ones? why not.
 
 #################### RULES FOR DOWNSTREAM PHYLOGENETIC ANALYSIS
@@ -242,7 +218,6 @@ rule build_tree:
 rule run_phyloseq_analysis:
   conda: "16s_analysis.yml"
   input:
-    "results/phyloseq/ASV_alignment.mafft.treefile",
     "results/phyloseq/Phyloseq.RData"
   params:
     in_dir = "results/phyloseq",
