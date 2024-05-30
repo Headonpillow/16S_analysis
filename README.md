@@ -40,6 +40,12 @@ to use preprocessing steps that include:
 2. Summarizing fastqc files with MultiQC
 3. Trimming sequences with Trim_galore
 
+Moreover an option for performing optionally the phylogenetic tree was added, as
+
+``` {bash}
+--config phylogeny="value"
+```
+
 > Just note that trimming doesn't happen in the pipeline when using DADA2, so if no pre-processing
 takes place, the sequences will not be trimmed at all.
 
