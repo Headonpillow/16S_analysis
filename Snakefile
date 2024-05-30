@@ -11,7 +11,6 @@ IDS, = glob_wildcards("data/raw_external/{id}.fastq.gz")
 # or not.
 # Based on that the input list for rule all will be different.
 myoutput = ["results/denoising/read_count_tracking.tsv",
-"results/denoising/qc.pdf",
 "results/asv/ASVs.fa", 
 "results/asv/ASVs_counts.tsv",
 "results/asv/ASVs_taxonomy.tsv",
@@ -159,7 +158,6 @@ rule denoise_reads:
     "intermediate/trimmed/samples.txt" 
   output:
     "results/denoising/read_count_tracking.tsv",
-    "results/denoising/qc.pdf",
     "results/denoising/seqtab.RData"
   params:
     sample_file_loc = "intermediate/trimmed",

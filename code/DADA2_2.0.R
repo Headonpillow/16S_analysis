@@ -26,16 +26,6 @@ reverse_reads <- paste0(samples, ".R2.fastq.gz")
 filtered_forward_reads <- paste0(samples, ".filtered.R1.fastq.gz")
 filtered_reverse_reads <- paste0(samples, ".filtered.R2.fastq.gz")
 
-#QUALITY PLOTS
-
-quality_plot <- function(data) {
-  plot <- plotQualityProfile(data)
-  return(plot)
-}
-
-fplots <- lapply(forward_reads, quality_plot)
-rplots <- lapply(reverse_reads, quality_plot)
-
 #FILTERING
 
 filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads, reverse_reads, filtered_reverse_reads, truncLen=c(260,200), maxEE=0, rm.phix = TRUE, multithread=TRUE)
@@ -95,31 +85,3 @@ write.table(summary_tab, "read_count_tracking.tsv", quote=FALSE, sep="\t", col.n
 #SEQTAB
 
 save(seqtab.nochim, file="./seqtab.RData")
-
-#GENERATE PDF OF QUALITY PLOTS
-
-len <- length(fplots)
-max_pages <- len/3
-
-if(len%%3 != 0) {
-  max_pages <- floor(max_pages)
-}
-
-i <- 1
-
-pdf("qc.pdf", onefile = TRUE, paper = "a4", height = 9, width = 9)
-
-while (i <= max_pages*3) {
-  z <- i+2
-  grid.arrange( grobs = c(fplots[i: z], rplots[i: z]), ncol = 2, as.table = FALSE)
-  i <- i+3
-}
-
-if(len%%3 == 1) {
-  grid.arrange( grobs = c(fplots[i], rplots[i]), ncol = 2, as.table = FALSE)
-} else if (len%%3 == 2) {
-  z <- i+1
-  grid.arrange( grobs = c(fplots[i: z], rplots[i: z]), ncol = 2, as.table = FALSE)
-}
-
-dev.off()
