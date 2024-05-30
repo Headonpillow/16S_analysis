@@ -28,8 +28,6 @@ if config['preprocess'] in ["yes"]:
   "results/multiQC_trimmed/report_R2.html"]
   myoutput = myoutput + extended
 
-print(myoutput)
-
 if config['phylogeny'] in ["yes"]:
   extended = ["results/phyloseq/ASV_alignment.mafft",
   "results/phyloseq/ASV_alignment.mafft.treefile"]
@@ -80,7 +78,7 @@ if config['preprocess'] in ["yes"]:
       expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
     shell:
       """
-      trim_galore --illumina --clip_R1 19 --clip_R2 19 --length 200 --paired data/raw_external/*fastq.gz -o intermediate/trimmed
+      trim_galore --illumina --clip_R1 19 --clip_R2 19 --paired data/raw_external/*fastq.gz -o intermediate/trimmed
       rm intermediate/trimmed/*report.txt
       for f in intermediate/trimmed/*_val_1.fq.gz; do mv -- "$f" "${{f%_val_1.fq.gz}}.fastq.gz"; done
       for f in intermediate/trimmed/*_val_2.fq.gz; do mv -- "$f" "${{f%_val_2.fq.gz}}.fastq.gz"; done

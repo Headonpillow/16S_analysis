@@ -38,31 +38,33 @@ rplots <- lapply(reverse_reads, quality_plot)
 
 #FILTERING
 
-filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads, reverse_reads, filtered_reverse_reads, multithread=TRUE)
+filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads, reverse_reads, filtered_reverse_reads, truncLen=c(260,200), maxEE=0, rm.phix = TRUE, multithread=TRUE)
 
 filtered_forward_reads <- filtered_forward_reads[file.exists(filtered_forward_reads)]
 filtered_reverse_reads <- filtered_reverse_reads[file.exists(filtered_reverse_reads)]
 
-#DENOISE
+#LEARN ERRORS
 
-err_forward_reads <- learnErrors(filtered_forward_reads, multithread=TRUE)
-err_reverse_reads <- learnErrors(filtered_reverse_reads, multithread=TRUE)
+err_forward_reads <- learnErrors(filtered_forward_reads, nbases= 1e8, multithread=TRUE)
+err_reverse_reads <- learnErrors(filtered_reverse_reads, nbases= 1e8, multithread=TRUE)
 
-#plotErrors(err_forward_reads, nominalQ=TRUE)
-#plotErrors(err_reverse_reads, nominalQ=TRUE)
+#DENOISE AND MERGE
 
-# TODO: pooling?
-dada_forward <- dada(filtered_forward_reads, err=err_forward_reads, pool=TRUE, multithread=TRUE)
-dada_reverse <- dada(filtered_reverse_reads, err=err_reverse_reads, pool=TRUE, multithread=TRUE)
+for(sam in samples) {
+  cat("Processing:", sam, "\n")
+    derepF <- derepFastq(paste0("./", sam, ".filtered.R1.fastq.gz"))
+    ddF <- dada(derepF, err=errF, multithread=TRUE)
+    derepR <- derepFastq(paste0("./", sam, ".filtered.R2.fastq.gz"))
+    ddR <- dada(derepR, err=errR, multithread=TRUE)
+    merger <- mergePairs(ddF, derepF, ddR, derepR, verbose=TRUE)
+    mergers[[sam]] <- merger
+}
 
-#MERGE
-
-merged_amplicons <- mergePairs(dada_forward, filtered_forward_reads, dada_reverse, filtered_reverse_reads, verbose=TRUE)
-
-seqtab <- makeSequenceTable(merged_amplicons)
+rm(derepF); rm(derepR)
+seqtab <- makeSequenceTable(mergers)
 
 #REMOVE SHORT SEQS
-seqtab2 <- seqtab[,nchar(colnames(seqtab)) %in% 350:470]
+seqtab2 <- seqtab[,nchar(colnames(seqtab)) %in% 350:460]
 
 #CHIMERA REMOVAL
 
