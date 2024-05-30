@@ -30,6 +30,11 @@ if config['preprocess'] in ["yes"]:
 
 print(myoutput)
 
+if config['phylogeny'] in ["yes"]:
+  extended = ["results/phyloseq/ASV_alignment.mafft",
+  "results/phyloseq/ASV_alignment.mafft.treefile"]
+  myoutput = myoutput + extended
+
 rule all: 
   input:
     myoutput
@@ -211,7 +216,29 @@ rule filter_taxa_and_normalization:
   script:
     "code/Taxa_filtering.R"
 
-# wanna also blast the other ones? why not.
+if config['phylogeny'] in ["yes"]:
+
+  rule align_seqs:
+    conda: "16s_analysis.yml"
+    input:
+      "results/phyloseq/ASVs_good.fasta"
+    output:
+      "results/phyloseq/ASV_alignment.mafft"
+    shell:
+      """
+      mafft --auto results/phyloseq/ASVs_good.fasta > results/phyloseq/ASV_alignment.mafft
+      """
+
+  rule build_tree:
+    conda: "16s_analysis.yml"
+    input:
+      "results/phyloseq/ASV_alignment.mafft"
+    output:
+      "results/phyloseq/ASV_alignment.mafft.treefile"
+    shell:
+      """
+      iqtree -s results/phyloseq/ASV_alignment.mafft -m GTR -B 1000 -alrt 1000 -T AUTO --redo-tree
+      """
 
 #################### RULES FOR DOWNSTREAM PHYLOGENETIC ANALYSIS
 
