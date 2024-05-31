@@ -152,6 +152,8 @@ rule retrieve_samplenames:
 # not present during the execution of the script, no need of a rule for them.
 
 rule denoise_reads:
+  resources:
+    runtime: 2880
   conda: "16s_analysis.yml"
   input:
     "intermediate/trimmed/samples.txt" 
