@@ -28,7 +28,7 @@ filtered_reverse_reads <- paste0(samples, ".filtered.R2.fastq.gz")
 
 #FILTERING
 
-filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads, reverse_reads, filtered_reverse_reads, truncLen=c(260,200), maxEE=0, rm.phix = TRUE, multithread=TRUE)
+filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads, reverse_reads, filtered_reverse_reads, maxEE=c(2,4), truncLen=c(260,200), rm.phix = TRUE, multithread=TRUE)
 
 filtered_forward_reads <- filtered_forward_reads[file.exists(filtered_forward_reads)]
 filtered_reverse_reads <- filtered_reverse_reads[file.exists(filtered_reverse_reads)]
@@ -40,12 +40,20 @@ err_reverse_reads <- learnErrors(filtered_reverse_reads, nbases= 1e8, multithrea
 
 #DENOISE AND MERGE
 
+mergers <- vector("list", length(samples))
+names(mergers) <- samples
+dadas_f <- vector("list", length(samples))
+names(dadas_f) <- samples
+dadas_r <- vector("list", length(samples))
+names(dadas_r) <- samples
 for(sam in samples) {
   cat("Processing:", sam, "\n")
     derepF <- derepFastq(paste0("./", sam, ".filtered.R1.fastq.gz"))
-    ddF <- dada(derepF, err=errF, multithread=TRUE)
+    ddF <- dada(derepF, err=err_forward_reads, multithread=TRUE)
+    dadas_f[[sam]] <- ddF
     derepR <- derepFastq(paste0("./", sam, ".filtered.R2.fastq.gz"))
-    ddR <- dada(derepR, err=errR, multithread=TRUE)
+    ddR <- dada(derepR, err=err_reverse_reads, multithread=TRUE)
+    dadas_r[[sam]] <- ddR
     merger <- mergePairs(ddF, derepF, ddR, derepR, verbose=TRUE)
     mergers[[sam]] <- merger
 }
@@ -67,7 +75,7 @@ setwd(output_path)
 
 getN <- function(x) sum(getUniques(x))
 
-if(length(samples) != length(sapply(dada_reverse, getN))) {
+if(length(samples) != length(sapply(dadas_r, getN))) {
   original <- paste0(samples, ".filtered.R1.fastq.gz")
   i <- match(original[!file.exists(original)], original)
   cat("sample: ", samples[i], " has been excluded from the analysis")
@@ -76,7 +84,7 @@ if(length(samples) != length(sapply(dada_reverse, getN))) {
   rm (original, i)
 }
 
-summary_tab <- data.frame(row.names=samples, dada2_input=filtered_out[,1], filtered=filtered_out[,2], dada_f=sapply(dada_forward, getN), dada_r=sapply(dada_reverse, getN), merged=sapply(merged_amplicons, getN), nonchim=rowSums(seqtab.nochim), final_perc_reads_retained=round(rowSums(seqtab.nochim)/filtered_out[,1]*100,1))
+summary_tab <- data.frame(row.names=samples, dada2_input=filtered_out[,1], filtered=filtered_out[,2], dada_f=sapply(dadas_f, getN), dada_r=sapply(dadas_r, getN), merged=sapply(mergers, getN), nonchim=rowSums(seqtab.nochim), final_perc_reads_retained=round(rowSums(seqtab.nochim)/filtered_out[,1]*100,1))
 
 write.table(summary_tab, "read_count_tracking.tsv", quote=FALSE, sep="\t", col.names=NA)
 
