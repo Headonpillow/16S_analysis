@@ -28,7 +28,7 @@ filtered_reverse_reads <- paste0(samples, ".filtered.R2.fastq.gz")
 
 #FILTERING
 
-filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads, reverse_reads, filtered_reverse_reads, maxEE=c(2,4), truncLen=c(260,200), rm.phix = TRUE, multithread=TRUE)
+filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads, reverse_reads, filtered_reverse_reads, maxEE=c(2,4), trimLeft=c(20,20), truncLen=c(290,220), rm.phix = TRUE, multithread=TRUE)
 
 filtered_forward_reads <- filtered_forward_reads[file.exists(filtered_forward_reads)]
 filtered_reverse_reads <- filtered_reverse_reads[file.exists(filtered_reverse_reads)]
@@ -66,7 +66,7 @@ seqtab2 <- seqtab[,nchar(colnames(seqtab)) %in% 350:460]
 
 #CHIMERA REMOVAL
 
-seqtab.nochim <- removeBimeraDenovo(seqtab2, verbose=T, method = "consensus", multithread = TRUE)
+seqtab.nochim <- removeBimeraDenovo(seqtab2, verbose=T, method = "per-sample", multithread = TRUE)
 
 ########### Set working directory to output path
 setwd(output_path)
