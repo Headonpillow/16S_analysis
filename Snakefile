@@ -153,7 +153,7 @@ rule retrieve_samplenames:
 
 rule denoise_reads:
   resources:
-    runtime: 2880
+    runtime=2880
   conda: "16s_analysis.yml"
   input:
     "intermediate/trimmed/samples.txt" 
