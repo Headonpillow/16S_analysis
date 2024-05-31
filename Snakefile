@@ -17,8 +17,7 @@ myoutput = ["results/denoising/read_count_tracking.tsv",
 "results/phyloseq/starting_phyla_table.tsv",
 "results/phyloseq/prevalence_graph.png",
 "results/phyloseq/Phyloseq.RData",
-"results/phyloseq/ASVs_good.fasta",
-"results/phyloseq/plots/plot_1.tiff"]
+"results/phyloseq/ASVs_good.fasta",]
 
 if config['preprocess'] in ["yes"]:
   extended = ["results/multiQC/report_R1.html", 
@@ -235,20 +234,6 @@ if config['phylogeny'] in ["yes"]:
       """
       iqtree -s results/phyloseq/ASV_alignment.mafft -m GTR -B 1000 -alrt 1000 -T AUTO --redo-tree
       """
-
-#################### RULES FOR DOWNSTREAM PHYLOGENETIC ANALYSIS
-
-rule run_phyloseq_analysis:
-  conda: "16s_analysis.yml"
-  input:
-    "results/phyloseq/Phyloseq.RData"
-  params:
-    in_dir = "results/phyloseq",
-    out_dir = "results/phyloseq/plots"
-  output:
-    "results/phyloseq/plots/plot_1.tiff"
-  script:
-    "code/Phyloseq.R"
 
 # TODO: add a feature for users to use their own ASV and TAX table?
 # TODO: add error messages for stuff like sequencing not merging etc.
