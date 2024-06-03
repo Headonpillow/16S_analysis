@@ -66,7 +66,7 @@ seqtab2 <- seqtab[,nchar(colnames(seqtab)) %in% 350:460]
 
 #CHIMERA REMOVAL
 
-seqtab.nochim <- removeBimeraDenovo(seqtab2, verbose=T, method = "per-sample", multithread = TRUE)
+seqtab.nochim <- removeBimeraDenovo(seqtab2, verbose=T, method = "consensus", multithread = TRUE)
 
 ########### Set working directory to output path
 setwd(output_path)
