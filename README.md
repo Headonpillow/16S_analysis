@@ -50,3 +50,4 @@ Moreover an option for performing optionally the phylogenetic tree was added, as
 takes place, the sequences will not be trimmed at all.
 
 > the **--cores** flag just specify the amount of cores to use, you can select what you think works best.
+
