@@ -156,7 +156,7 @@ rule retrieve_samplenames:
 # not present during the execution of the script, no need of a rule for them.
 
 rule denoise_reads:
-  conda: "16s_analysis.yml"
+  conda: "r.yml"
   input:
     "intermediate/trimmed/samples.txt" 
   output:
@@ -170,7 +170,7 @@ rule denoise_reads:
     "code/DADA2_2.0.R"
 
 rule assign_taxonomy:
-  conda: "16s_analysis.yml"
+  conda: "r.yml"
   input: 
     "intermediate/trimmed/samples.txt",
     "results/denoising/seqtab.RData"
@@ -196,7 +196,7 @@ rule assign_taxonomy:
 # TODO: correct the location where the good and bad ASVs are out, it doesn't make sense they're 
 # in the Phyloseq directory.
 rule filter_taxa_and_normalization:
-  conda: "16s_analysis.yml"
+  conda: "r.yml"
   input:
     "intermediate/trimmed/samples.txt",
     "results/asv/ASVs_counts.tsv",
@@ -243,7 +243,7 @@ if config['phylogeny'] in ["yes"]:
 #################### RULES FOR DOWNSTREAM PHYLOGENETIC ANALYSIS
 
 rule run_phyloseq_analysis:
-  conda: "16s_analysis.yml"
+  conda: "r.yml"
   input:
     "results/phyloseq/Phyloseq.RData"
   params:
