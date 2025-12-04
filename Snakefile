@@ -179,7 +179,7 @@ rule assign_taxonomy:
     "results/asv/ASVs_counts.tsv",
     "results/asv/ASVs_taxonomy.tsv"
   params:
-    database = "data/db/SILVA_SSU_r138_2019.RData",
+    database = "data/db/SILVA_SSU_r138_2_2024.RData",
     dada_files_dir = "results/denoising",
     results_dir = "results/asv"
   script:
