@@ -18,8 +18,17 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
     asv_files <- params[["asv_dir"]]
     metadata <- params[["metadata_dir"]]
     out_dir <- params[["results_dir"]]
+    # Resolve sample input: accept either a directory containing samples.txt
+    # or a path to the samples file itself (e.g. "intermediate/trimmed" or "intermediate/trimmed/samples.txt").
+    if (grepl("\\.txt$", samples) || grepl("samples.txt$", samples)) {
+        samples_file <- file.path(script_path, samples)
+        samples_dir <- dirname(samples_file)
+    } else {
+        samples_dir <- file.path(script_path, samples)
+        samples_file <- file.path(samples_dir, "samples.txt")
+    }
 
-    samples_path <- file.path(script_path, samples)
+    samples_path <- samples_dir
     asv_files_path <- file.path(script_path, asv_files)
     metadata_path <- file.path(script_path, metadata)
     output_path <- file.path(script_path, out_dir)
@@ -28,8 +37,14 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
 
     ############### PHYLOSEQ OBJECT CREATION
     # Start with loading sample names
+    if (!dir.exists(samples_path)) {
+        stop(sprintf("Samples directory not found: %s", samples_path))
+    }
     setwd(samples_path)
-    samples <- scan(file = "samples.txt", what = "character")
+    if (!file.exists(basename(samples_file))) {
+        stop(sprintf("Samples file not found: %s", samples_file))
+    }
+    samples <- scan(file = basename(samples_file), what = "character")
 
     # Now loading the ASVs count_table and the ASVs tax_table
     setwd(asv_files_path)

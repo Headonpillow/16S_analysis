@@ -12,13 +12,30 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
   in_dir <- params[["sample_file_loc"]]
   out_dir <- params[["results_dir"]]
 
-  input_path <- file.path(script_path, in_dir)
+  # Resolve sample input: accept either a directory containing samples.txt
+  # or a path to the samples file itself (e.g. "intermediate/trimmed" or "intermediate/trimmed/samples.txt").
+  if (grepl("\\.txt$", in_dir) || grepl("samples.txt$", in_dir)) {
+    samples_file <- file.path(script_path, in_dir)
+    samples_dir <- dirname(samples_file)
+  } else {
+    samples_dir <- file.path(script_path, in_dir)
+    samples_file <- file.path(samples_dir, "samples.txt")
+  }
+
+  input_path <- samples_dir
   output_path <- file.path(script_path, out_dir)
 
-  # Setting the input directory to the correct path
-  setwd(input_path)
+  # Ensure the samples directory and file exist before proceeding
+  if (!dir.exists(input_path)) {
+    stop(sprintf("Samples directory not found: %s", input_path))
+  }
+  if (!file.exists(samples_file)) {
+    stop(sprintf("Samples file not found: %s", samples_file))
+  }
 
-  samples <- scan(file = "samples.txt", what = "character")
+  # Set working dir to samples directory and read samples file
+  setwd(input_path)
+  samples <- scan(file = basename(samples_file), what = "character")
 
   # FILTERING
   forward_reads <- paste0(samples, ".R1.fastq.gz")
