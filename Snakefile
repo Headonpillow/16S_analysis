@@ -181,8 +181,7 @@ rule assign_taxonomy:
     counts = "results/asv/ASVs_counts.tsv",
     tax = "results/asv/ASVs_taxonomy.tsv"
   params:
-    database = "data/db/SILVA_SSU_r138_2019.RData",
-    # directory containing seqtab.RData (script will `setwd()` here and load seqtab.RData)
+    database = "data/db/SILVA_SSU_r138_2_2024.RData",
     dada_files_dir = "results/denoising",
     results_dir = "results/asv"
   script:
