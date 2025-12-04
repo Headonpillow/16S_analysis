@@ -31,7 +31,7 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
   asv_seqs <- colnames(seqtab.nochim)
   asv_headers <- vector(dim(seqtab.nochim)[2], mode = "character")
   for (i in seq_len(dim(seqtab.nochim)[2])) {
-    asv_headers[i] <- paste("ASV", i, sep = "_")
+    asv_headers[i] <- paste(">ASV", i, sep = "_")
   }
 
   lengths <- vapply(seq_along(asv_seqs), function(i) nchar(asv_seqs[i]), integer(1))
