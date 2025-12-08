@@ -10,44 +10,72 @@ The intended contents of each directory is explained in separate README.md files
 
 ## How to run
 
-1) After cloning the repository, put your raw data, database and metadata in:
+### Option 1: Per-run isolated workflow (Recommended)
 
-* data/raw_internal
-* data/raw_internal/db
-* data/meta
+This approach keeps each analysis run isolated in its own directory.
+
+1) Create a run-specific directory and copy the config template:
+
+``` {bash}
+mkdir -p runs/my_run
+cp config_templates/basic.yaml runs/my_run/config.yaml
+```
+
+2) Create the required data structure inside your run directory:
+
+``` {bash}
+mkdir -p runs/my_run/data/{raw_external,db,meta}
+```
+
+3) Put your raw data, database and metadata in:
+
+* `runs/my_run/data/raw_external/` - Your .fastq.gz files
+* `runs/my_run/data/db/` - SILVA database file
+* `runs/my_run/data/meta/` - metadata.tsv file
 
 > Metadata file should be in **.tsv** format, the names of the raw files should follow the convention "**{your_sample}**.R1.fastq.gz" to work.
 
-2) Have snakemake installed and working on your machine.
+4) Edit `runs/my_run/config.yaml` to customize settings if needed.
 
-3) Run the pipeline with:
+5) Run the pipeline from the repository root:
+
+``` {bash}
+snakemake --configfile runs/my_run/config.yaml --directory runs/my_run --use-conda --cores all all
+```
+
+This will create all outputs (`results/`, `intermediate/`, etc.) inside `runs/my_run/`, keeping your runs isolated.
+
+### Option 2: Legacy repository-root workflow
+
+For backwards compatibility, you can still run from the repository root:
+
+1) Put your raw data, database and metadata in:
+
+* data/raw_external
+* data/db
+* data/meta
+
+2) Run the pipeline:
 
 ``` {bash}
 snakemake --use-conda --cores all all
 ```
 
-There are some parameters that you might want to use in the command line,
-one of them is:
+### Configuration Options
+
+The config file supports the following options:
+
+* `preprocess: "yes"` or `"no"` - Run preprocessing steps (FastQC, MultiQC, Trim_galore)
+* `phylogeny: "yes"` or `"no"` - Build phylogenetic alignment and tree
+
+You can also override these via command line:
 
 ``` {bash}
---config preprocess="value"
-```
-
-Where value can be either "yes" or "no", the choice indicates if you want snakemake
-to use preprocessing steps that include:
-
-1. Generating fastqc files
-2. Summarizing fastqc files with MultiQC
-3. Trimming sequences with Trim_galore
-
-Moreover an option for performing optionally the phylogenetic tree was added, as
-
-``` {bash}
---config phylogeny="value"
+--config preprocess="no" phylogeny="yes"
 ```
 
 > Just note that trimming doesn't happen in the pipeline when using DADA2, so if no pre-processing
 takes place, the sequences will not be trimmed at all.
 
-> the **--cores** flag just specify the amount of cores to use, you can select what you think works best.
+> the **--cores** flag specifies the amount of cores to use, you can select what you think works best.
 

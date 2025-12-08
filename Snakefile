@@ -1,6 +1,23 @@
-#IDS, = glob_wildcards("{id,[^/]+}.fastq.gz")
+# Set default config values if not provided
+configfile: "config.yml"
 
-IDS, = glob_wildcards("data/raw_external/{id}.fastq.gz")
+# Configure directory paths from config
+DATA_DIR = config.get("data_dir", "data")
+RAW_DATA_SUBDIR = config.get("raw_data_subdir", "raw_external")
+DB_SUBDIR = config.get("db_subdir", "db")
+META_SUBDIR = config.get("meta_subdir", "meta")
+INTERMEDIATE_DIR = config.get("intermediate_dir", "intermediate")
+RESULTS_DIR = config.get("results_dir", "results")
+
+# Construct full paths
+RAW_DATA_PATH = f"{DATA_DIR}/{RAW_DATA_SUBDIR}"
+DB_PATH = f"{DATA_DIR}/{DB_SUBDIR}"
+META_PATH = f"{DATA_DIR}/{META_SUBDIR}"
+TRIMMED_PATH = f"{INTERMEDIATE_DIR}/trimmed"
+FILTERED_PATH = f"{INTERMEDIATE_DIR}/dada_filtered"
+
+# Get sample IDs from raw data
+IDS, = glob_wildcards(f"{RAW_DATA_PATH}/{{id}}.fastq.gz")
 
 # there is a problem because glob_wildcards read the whole
 # directory + subdirectory, maybe to solve later implementing 
@@ -10,29 +27,29 @@ IDS, = glob_wildcards("data/raw_external/{id}.fastq.gz")
 # running the pipeline wants the QC and primer removal to happen
 # or not.
 # Based on that the input list for rule all will be different.
-myoutput = ["results/denoising/read_count_tracking.tsv",
-"results/denoising/qc.pdf",
-"results/asv/ASVs.fa", 
-"results/asv/ASVs_counts.tsv",
-"results/asv/ASVs_taxonomy.tsv",
-"results/phyloseq/starting_phyla_table.tsv",
-"results/phyloseq/prevalence_graph.png",
-"results/phyloseq/Phyloseq.RData",
-"results/phyloseq/ASVs_good.fasta",
-"results/phyloseq/plots/plot_1.tiff"]
+myoutput = [f"{RESULTS_DIR}/denoising/read_count_tracking.tsv",
+f"{RESULTS_DIR}/denoising/qc.pdf",
+f"{RESULTS_DIR}/asv/ASVs.fa", 
+f"{RESULTS_DIR}/asv/ASVs_counts.tsv",
+f"{RESULTS_DIR}/asv/ASVs_taxonomy.tsv",
+f"{RESULTS_DIR}/phyloseq/starting_phyla_table.tsv",
+f"{RESULTS_DIR}/phyloseq/prevalence_graph.png",
+f"{RESULTS_DIR}/phyloseq/Phyloseq.RData",
+f"{RESULTS_DIR}/phyloseq/ASVs_good.fasta",
+f"{RESULTS_DIR}/phyloseq/plots/plot_1.tiff"]
 
 if config['preprocess'] in ["yes"]:
-  extended = ["results/multiQC/report_R1.html", 
-  "results/multiQC/report_R2.html",
-  "results/multiQC_trimmed/report_R1.html",
-  "results/multiQC_trimmed/report_R2.html"]
+  extended = [f"{RESULTS_DIR}/multiQC/report_R1.html", 
+  f"{RESULTS_DIR}/multiQC/report_R2.html",
+  f"{RESULTS_DIR}/multiQC_trimmed/report_R1.html",
+  f"{RESULTS_DIR}/multiQC_trimmed/report_R2.html"]
   myoutput = myoutput + extended
 
 print(myoutput)
 
 if config['phylogeny'] in ["yes"]:
-  extended = ["results/phyloseq/ASV_alignment.mafft",
-  "results/phyloseq/ASV_alignment.mafft.treefile"]
+  extended = [f"{RESULTS_DIR}/phyloseq/ASV_alignment.mafft",
+  f"{RESULTS_DIR}/phyloseq/ASV_alignment.mafft.treefile"]
   myoutput = myoutput + extended
 
 rule all: 
@@ -49,78 +66,98 @@ if config['preprocess'] in ["yes"]:
   rule FastQC:
     conda: "16s_analysis.yml"
     input:
-      expand("data/raw_external/{id}.fastq.gz", id=IDS)
+      expand(f"{RAW_DATA_PATH}/{{id}}.fastq.gz", id=IDS)
     output:
-      expand("results/fastqc/{id}_fastqc.zip", id=IDS)
+      expand(f"{RESULTS_DIR}/fastqc/{{id}}_fastqc.zip", id=IDS)
+    params:
+      outdir = f"{RESULTS_DIR}/fastqc",
+      indir = RAW_DATA_PATH
     shell:
       """
-      [ ! -d results/fastqc ] && mkdir results/fastqc
-      fastqc -o results/fastqc data/raw_external/*.gz
+      [ ! -d {params.outdir} ] && mkdir -p {params.outdir}
+      fastqc -o {params.outdir} {params.indir}/*.gz
       """
 
   rule MultiQC:
     conda: "16s_analysis.yml"
     input:
-      expand("results/fastqc/{id}_fastqc.zip", id=IDS)
+      expand(f"{RESULTS_DIR}/fastqc/{{id}}_fastqc.zip", id=IDS)
     output:
-      "results/multiQC/report_R1.html",
-      "results/multiQC/report_R2.html"
+      f"{RESULTS_DIR}/multiQC/report_R1.html",
+      f"{RESULTS_DIR}/multiQC/report_R2.html"
+    params:
+      outdir = f"{RESULTS_DIR}/multiQC",
+      fastqc_dir = f"{RESULTS_DIR}/fastqc"
     shell:
       """
-      [ ! -d results/multiQC ] && mkdir results/multiQC
-      multiqc -n report_R1 results/fastqc/*R1_fastqc.zip -o results/multiQC
-      multiqc -n report_R2 results/fastqc/*R2_fastqc.zip -o results/multiQC
+      [ ! -d {params.outdir} ] && mkdir -p {params.outdir}
+      multiqc -n report_R1 {params.fastqc_dir}/*R1_fastqc.zip -o {params.outdir}
+      multiqc -n report_R2 {params.fastqc_dir}/*R2_fastqc.zip -o {params.outdir}
       """
 
   rule Trim_galore:
     conda: "16s_analysis.yml"
     input:
-      expand("data/raw_external/{id}.fastq.gz", id=IDS)
+      expand(f"{RAW_DATA_PATH}/{{id}}.fastq.gz", id=IDS)
     output:
-      expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
+      expand(f"{TRIMMED_PATH}/{{id}}.fastq.gz", id=IDS)
+    params:
+      indir = RAW_DATA_PATH,
+      outdir = TRIMMED_PATH
     shell:
       """
-      trim_galore --illumina --clip_R1 5 --clip_R2 5 --length 200 --paired data/raw_external/*fastq.gz -o intermediate/trimmed
-      rm intermediate/trimmed/*report.txt
-      for f in intermediate/trimmed/*_val_1.fq.gz; do mv -- "$f" "${{f%_val_1.fq.gz}}.fastq.gz"; done
-      for f in intermediate/trimmed/*_val_2.fq.gz; do mv -- "$f" "${{f%_val_2.fq.gz}}.fastq.gz"; done
+      mkdir -p {params.outdir}
+      trim_galore --illumina --clip_R1 5 --clip_R2 5 --length 200 --paired {params.indir}/*fastq.gz -o {params.outdir}
+      rm {params.outdir}/*report.txt
+      for f in {params.outdir}/*_val_1.fq.gz; do mv -- "$f" "${{f%_val_1.fq.gz}}.fastq.gz"; done
+      for f in {params.outdir}/*_val_2.fq.gz; do mv -- "$f" "${{f%_val_2.fq.gz}}.fastq.gz"; done
       """
 
   rule FastQC_trimmed:
     conda: "16s_analysis.yml"
     input: 
-      expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
+      expand(f"{TRIMMED_PATH}/{{id}}.fastq.gz", id=IDS)
     output:
-      expand("results/fastqc_trimmed/{id}_fastqc.zip", id=IDS)
+      expand(f"{RESULTS_DIR}/fastqc_trimmed/{{id}}_fastqc.zip", id=IDS)
+    params:
+      outdir = f"{RESULTS_DIR}/fastqc_trimmed",
+      indir = TRIMMED_PATH
     shell:
       """
-      [ ! -d results/fastqc_trimmed ] && mkdir results/fastqc_trimmed
-      fastqc -o results/fastqc_trimmed intermediate/trimmed/*.gz
+      [ ! -d {params.outdir} ] && mkdir -p {params.outdir}
+      fastqc -o {params.outdir} {params.indir}/*.gz
       """
 
   rule MultiQC_trimmed:
     conda: "16s_analysis.yml"
     input:
-      expand("results/fastqc_trimmed/{id}_fastqc.zip", id=IDS)
+      expand(f"{RESULTS_DIR}/fastqc_trimmed/{{id}}_fastqc.zip", id=IDS)
     output:
-      "results/multiQC_trimmed/report_R1.html",
-      "results/multiQC_trimmed/report_R2.html"
+      f"{RESULTS_DIR}/multiQC_trimmed/report_R1.html",
+      f"{RESULTS_DIR}/multiQC_trimmed/report_R2.html"
+    params:
+      outdir = f"{RESULTS_DIR}/multiQC_trimmed",
+      fastqc_dir = f"{RESULTS_DIR}/fastqc_trimmed"
     shell:
       """
-      [ ! -d results/multiQC_trimmed ] && mkdir results/multiQC_trimmed
-      multiqc -n report_R1 results/fastqc_trimmed/*R1_fastqc.zip -o results/multiQC_trimmed
-      multiqc -n report_R2 results/fastqc_trimmed/*R2_fastqc.zip -o results/multiQC_trimmed
+      [ ! -d {params.outdir} ] && mkdir -p {params.outdir}
+      multiqc -n report_R1 {params.fastqc_dir}/*R1_fastqc.zip -o {params.outdir}
+      multiqc -n report_R2 {params.fastqc_dir}/*R2_fastqc.zip -o {params.outdir}
       """
 
 else:
   rule move_raw_files_to_trimmed:
     input:
-      expand("data/raw_external/{id}.fastq.gz", id=IDS)
+      expand(f"{RAW_DATA_PATH}/{{id}}.fastq.gz", id=IDS)
     output:
-      expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
+      expand(f"{TRIMMED_PATH}/{{id}}.fastq.gz", id=IDS)
+    params:
+      indir = RAW_DATA_PATH,
+      outdir = TRIMMED_PATH
     shell:
       """
-      cp data/raw_external/*.gz intermediate/trimmed
+      mkdir -p {params.outdir}
+      cp {params.indir}/*.gz {params.outdir}
       """
 
 #################### RULES FOR DENOISING AND TAX ASSIGNMENT 
@@ -144,11 +181,11 @@ else:
 rule retrieve_samplenames:
   conda: "16s_analysis.yml"
   input: 
-    expand("intermediate/trimmed/{id}.fastq.gz", id=IDS)
+    expand(f"{TRIMMED_PATH}/{{id}}.fastq.gz", id=IDS)
   output:
-    "intermediate/trimmed/samples.txt"
+    f"{TRIMMED_PATH}/samples.txt"
   params:
-    trimmed_files_loc = "intermediate/trimmed"
+    trimmed_files_loc = TRIMMED_PATH
   script:
     "code/retrieve_names.py"
 
@@ -158,29 +195,29 @@ rule retrieve_samplenames:
 rule denoise_reads:
   conda: "r.yml"
   input:
-    samples = "intermediate/trimmed/samples.txt"
+    samples = f"{TRIMMED_PATH}/samples.txt"
   output:
-    track = "results/denoising/read_count_tracking.tsv",
-    qc = "results/denoising/qc.pdf",
-    seqtab = "results/denoising/seqtab.RData"
+    track = f"{RESULTS_DIR}/denoising/read_count_tracking.tsv",
+    qc = f"{RESULTS_DIR}/denoising/qc.pdf",
+    seqtab = f"{RESULTS_DIR}/denoising/seqtab.RData"
   params:
     # output directories (script will create/use this dir)
-    results_dir = "results/denoising",
-    intermediate_filtered_dir = "intermediate/dada_filtered"
+    results_dir = f"{RESULTS_DIR}/denoising",
+    intermediate_filtered_dir = FILTERED_PATH
   script: 
     "code/DADA2_2.0.R"
 
 rule assign_taxonomy:
   conda: "r.yml"
   input: 
-    samples = "intermediate/trimmed/samples.txt",
-    seqtab = "results/denoising/seqtab.RData"
+    samples = f"{TRIMMED_PATH}/samples.txt",
+    seqtab = f"{RESULTS_DIR}/denoising/seqtab.RData"
   output:
-    fa = "results/asv/ASVs.fa", 
-    counts = "results/asv/ASVs_counts.tsv",
-    tax = "results/asv/ASVs_taxonomy.tsv"
+    fa = f"{RESULTS_DIR}/asv/ASVs.fa", 
+    counts = f"{RESULTS_DIR}/asv/ASVs_counts.tsv",
+    tax = f"{RESULTS_DIR}/asv/ASVs_taxonomy.tsv"
   params:
-    database = "data/db/SILVA_SSU_r138_2_2024.RData",
+    database = f"{DB_PATH}/{config.get('silva_db', 'SILVA_SSU_r138_2_2024.RData')}",
   script:
     "code/Taxonomic_assignment.R"
 
@@ -197,16 +234,16 @@ rule assign_taxonomy:
 rule filter_taxa_and_normalization:
   conda: "r.yml"
   input:
-    samples = "intermediate/trimmed/samples.txt",
-    counts = "results/asv/ASVs_counts.tsv",
-    tax = "results/asv/ASVs_taxonomy.tsv",
-    fa = "results/asv/ASVs.fa",
-    metadata = "data/meta/metadata.tsv"
+    samples = f"{TRIMMED_PATH}/samples.txt",
+    counts = f"{RESULTS_DIR}/asv/ASVs_counts.tsv",
+    tax = f"{RESULTS_DIR}/asv/ASVs_taxonomy.tsv",
+    fa = f"{RESULTS_DIR}/asv/ASVs.fa",
+    metadata = f"{META_PATH}/{config.get('metadata_file', 'metadata.tsv')}"
   output:
-    starting_phyla = "results/phyloseq/starting_phyla_table.tsv",
-    prevalence = "results/phyloseq/prevalence_graph.png",
-    phyloseq = "results/phyloseq/Phyloseq.RData",
-    asv_good = "results/phyloseq/ASVs_good.fasta"
+    starting_phyla = f"{RESULTS_DIR}/phyloseq/starting_phyla_table.tsv",
+    prevalence = f"{RESULTS_DIR}/phyloseq/prevalence_graph.png",
+    phyloseq = f"{RESULTS_DIR}/phyloseq/Phyloseq.RData",
+    asv_good = f"{RESULTS_DIR}/phyloseq/ASVs_good.fasta"
   script:
     "code/Taxa_filtering.R"
 
@@ -215,23 +252,28 @@ if config['phylogeny'] in ["yes"]:
   rule align_seqs:
     conda: "16s_analysis.yml"
     input:
-      "results/phyloseq/ASVs_good.fasta"
+      f"{RESULTS_DIR}/phyloseq/ASVs_good.fasta"
     output:
-      "results/phyloseq/ASV_alignment.mafft"
+      f"{RESULTS_DIR}/phyloseq/ASV_alignment.mafft"
+    params:
+      infile = f"{RESULTS_DIR}/phyloseq/ASVs_good.fasta",
+      outfile = f"{RESULTS_DIR}/phyloseq/ASV_alignment.mafft"
     shell:
       """
-      mafft --auto results/phyloseq/ASVs_good.fasta > results/phyloseq/ASV_alignment.mafft
+      mafft --auto {params.infile} > {params.outfile}
       """
 
   rule build_tree:
     conda: "16s_analysis.yml"
     input:
-      "results/phyloseq/ASV_alignment.mafft"
+      f"{RESULTS_DIR}/phyloseq/ASV_alignment.mafft"
     output:
-      "results/phyloseq/ASV_alignment.mafft.treefile"
+      f"{RESULTS_DIR}/phyloseq/ASV_alignment.mafft.treefile"
+    params:
+      infile = f"{RESULTS_DIR}/phyloseq/ASV_alignment.mafft"
     shell:
       """
-      iqtree -s results/phyloseq/ASV_alignment.mafft -m GTR -B 1000 -alrt 1000 -T AUTO --redo-tree
+      iqtree -s {params.infile} -m GTR -B 1000 -alrt 1000 -T AUTO --redo-tree
       """
 
 #################### RULES FOR DOWNSTREAM PHYLOGENETIC ANALYSIS
@@ -239,12 +281,12 @@ if config['phylogeny'] in ["yes"]:
 rule run_phyloseq_analysis:
   conda: "r.yml"
   input:
-    phyloseq = "results/phyloseq/Phyloseq.RData"
+    phyloseq = f"{RESULTS_DIR}/phyloseq/Phyloseq.RData"
   params:
     # full path to output plots directory
-    out_dir = "results/phyloseq/plots"
+    out_dir = f"{RESULTS_DIR}/phyloseq/plots"
   output:
-    "results/phyloseq/plots/plot_1.tiff"
+    f"{RESULTS_DIR}/phyloseq/plots/plot_1.tiff"
   script:
     "code/Phyloseq.R"
 

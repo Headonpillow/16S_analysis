@@ -8,6 +8,9 @@ logs/*.log
 scratch/*
 results/*
 
+# ignore per-run working directories
+runs/*/
+
 # ignore data files
 *.fastq.gz
 *.RData

@@ -1,0 +1,21 @@
+# basic.yaml — default template for per-run configuration
+# Copy this file to your run directory and customize as needed
+
+# Processing options
+preprocess: "yes"   # run FastQC/MultiQC/Trim_Galore (yes/no)
+phylogeny: "yes"    # build alignment and tree (yes/no)
+
+# Directory paths (relative to working directory)
+data_dir: "data"                    # raw data directory
+raw_data_subdir: "raw_external"     # subdirectory with .fastq.gz files
+db_subdir: "db"                     # subdirectory with database files
+meta_subdir: "meta"                 # subdirectory with metadata files
+
+intermediate_dir: "intermediate"    # intermediate files directory
+results_dir: "results"              # results directory
+
+# Database file (relative to data_dir/db_subdir)
+silva_db: "SILVA_SSU_r138_2_2024.RData"
+
+# Metadata file (relative to data_dir/meta_subdir)
+metadata_file: "metadata.tsv"
