@@ -1,1 +1,5 @@
-msg_to_print: "Hi!"
+# config.yml — default “run everything” settings
+preprocess: "yes"   # run FastQC/MultiQC/Trim_Galore
+phylogeny: "yes"    # build alignment and tree
+
+
