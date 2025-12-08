@@ -6,24 +6,42 @@ suppressPackageStartupMessages({
 })
 
 main <- function(input_paths = list(), output_paths = list(), params = list()) {
-  script_path <- getwd()
-  db <- params[["database"]]
-  dada <- params[["dada_files_dir"]]
-  out_dir <- params[["results_dir"]]
+  # Map Snakemake inputs
+  seqtab_file <- input_paths[["seqtab"]]    # results/denoising/seqtab.RData
+  samples_file <- input_paths[["samples"]]  # intermediate/trimmed/samples.txt
 
-  db <- file.path(script_path, db)
-  dada_path <- file.path(script_path, dada)
-  output_path <- file.path(script_path, out_dir)
+  # Map Snakemake outputs
+  fa_out <- output_paths[["fa"]]            # results/asv/ASVs.fa
+  counts_out <- output_paths[["counts"]]    # results/asv/ASVs_counts.tsv
+  tax_out <- output_paths[["tax"]]          # results/asv/ASVs_taxonomy.tsv
 
-  dir.create(output_path, recursive = TRUE, showWarnings = FALSE)
+  # Map Snakemake params
+  db_param <- params[["database"]]
 
-  setwd(dada_path)
-  load(file = "seqtab.RData")
+  # Use the directory of the fa_out as the general output dir
+  output_dir <- dirname(fa_out)
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
-  ## TAXONOMY
-  setwd(script_path)
-  load(db)
+  # Basic checks
+  if (is.null(seqtab_file)) {
+    stop("Missing required input: 'seqtab'")
+  }
+  if (any(vapply(list(is.null(fa_out), is.null(counts_out), is.null(tax_out)), isTRUE, logical(1)))) {
+    stop("Missing required outputs: expect names 'fa','counts','tax'.")
+  }
 
+  # Resolve path for database
+  db_path <- db_param
+  # Ensure paths are valid
+  if (!is.null(db_path) && !file.exists(db_path)) {
+    db_path <- file.path(getwd(), db_param)
+  }
+
+  # Load seqtab and database (do not change working directory)
+  load(seqtab_file)
+  if (!is.null(db_path) && file.exists(db_path)) load(db_path)
+
+  # TAXONOMY
   dna <- DNAStringSet(getSequences(seqtab.nochim))
   tax_info <- IdTaxa(test = dna, trainingSet = trainingSet, strand = "both", processors = NULL, threshold = 50)
 
@@ -37,16 +55,14 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
   lengths <- vapply(seq_along(asv_seqs), function(i) nchar(asv_seqs[i]), integer(1))
   lengths_df <- data.frame(names = as.vector(asv_headers), lengths = as.vector(lengths))
 
-  setwd(output_path)
-
   # WRITING FASTA
   asv_fasta <- c(rbind(asv_headers, asv_seqs))
-  write(asv_fasta, "ASVs.fa")
+  write(asv_fasta, fa_out)
 
   # WRITING ABUNDANCE TABLE
   asv_tab <- t(seqtab.nochim)
   row.names(asv_tab) <- sub(">", "", asv_headers)
-  write.table(asv_tab, "ASVs_counts.tsv", sep = "\t", quote = FALSE, col.names = NA)
+  write.table(asv_tab, counts_out, sep = "\t", quote = FALSE, col.names = NA)
 
   # WRITING TAX TABLE
   ranks <- c("domain", "phylum", "class", "order", "family", "genus", "species")
@@ -58,7 +74,7 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
   colnames(asv_tax) <- ranks
   rownames(asv_tax) <- gsub(pattern = ">", replacement = "", x = asv_headers)
 
-  write.table(asv_tax, "ASVs_taxonomy.tsv", sep = "\t", quote = FALSE, col.names = NA)
+  write.table(asv_tax, tax_out, sep = "\t", quote = FALSE, col.names = NA)
 }
 
 # --- Wrapper for Snakemake vs interactive execution ---
@@ -69,14 +85,6 @@ if (exists("snakemake")) {
     params = as.list(snakemake@params)
   )
 } else {
-  # Fallback for interactive debugging
-  main(
-    input_paths = list(),
-    output_paths = list(),
-    params = list(
-      database = "db/SILVA_SSU_r138_2019.RData",
-      dada_files_dir = ".",
-      results_dir = "results_debug"
-    )
-  )
+    # Fallback for interactive debugging
+    stop("This script is meant to be run by Snakemake. For interactive use, source() it and call main(...) manually.")
 }

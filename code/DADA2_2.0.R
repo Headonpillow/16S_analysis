@@ -7,24 +7,28 @@ suppressPackageStartupMessages({
 })
 
 main <- function(input_paths = list(), output_paths = list(), params = list()) {
-  # Normalize params
-  script_path <- getwd()
-  in_dir <- params[["sample_file_loc"]]
-  out_dir <- params[["results_dir"]]
+  # Map Snakemake inputs
+  samples_file <- input_paths[["samples"]]                    # intermediate/trimmed/samples.txt
 
-  # Resolve sample input: accept either a directory containing samples.txt
-  # or a path to the samples file itself (e.g. "intermediate/trimmed" or "intermediate/trimmed/samples.txt").
-  if (grepl("\\.txt$", in_dir) || grepl("samples.txt$", in_dir)) {
-    samples_file <- file.path(script_path, in_dir)
-    samples_dir <- dirname(samples_file)
-  } else {
-    samples_dir <- file.path(script_path, in_dir)
-    samples_file <- file.path(samples_dir, "samples.txt")
+  # Map Snakemake outputs
+  track_out <- output_paths[["track"]]                        # results/denoising/read_count_tracking.tsv
+  qc_out <- output_paths[["qc"]]                              # results/denoising/qc.pdf
+  seqtab_out <- output_paths[["seqtab"]]                      # results/denoising/seqtab.RData
+
+  # Map Snakemake params
+  output_path <- params[["results_dir"]]                      # results/denoising 
+  intermediate_path <- params[["intermediate_filtered_dir"]]  # intermediate/dada_filtered
+
+  # Basic checks
+  if (is.null(samples_file)) {
+    stop("Missing required input: 'samples'")
+  }
+  if (any(vapply(list(track_out, qc_out, seqtab_out), is.null, logical(1)))) {
+    stop("Missing required outputs: expect names 'track','qc','seqtab'.")
   }
 
-  input_path <- samples_dir
-  output_path <- file.path(script_path, out_dir)
-
+  # Resolve paths
+  input_path <- dirname(samples_file)
   # Ensure the samples directory and file exist before proceeding
   if (!dir.exists(input_path)) {
     stop(sprintf("Samples directory not found: %s", input_path))
@@ -33,17 +37,29 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
     stop(sprintf("Samples file not found: %s", samples_file))
   }
 
-  # Set working dir to samples directory and read samples file
-  setwd(input_path)
-  samples <- scan(file = basename(samples_file), what = "character")
+  # Read samples file
+  samples <- scan(file = samples_file, what = "character")
+
+  # Deduplicate sample names if needed (filterAndTrim requires distinct output filenames)
+  if (any(duplicated(samples))) {
+    warning(sprintf("Found %d duplicate sample name(s) in %s; keeping first occurrence of each sample.", sum(duplicated(samples)), samples_file))
+    samples <- unique(samples)
+  }
 
   # FILTERING
-  forward_reads <- paste0(samples, ".R1.fastq.gz")
-  reverse_reads <- paste0(samples, ".R2.fastq.gz")
+  # Build full paths for input fastq files (they live in the samples directory)
+  forward_reads <- file.path(input_path, paste0(samples, ".R1.fastq.gz"))
+  reverse_reads <- file.path(input_path, paste0(samples, ".R2.fastq.gz"))
 
-  filtered_forward_reads <- paste0(samples, ".filtered.R1.fastq.gz")
-  filtered_reverse_reads <- paste0(samples, ".filtered.R2.fastq.gz")
-
+  # Prepare filtered output file paths in the results directory (do not change cwd)
+  # Ensure output directory exists
+  out_dir <- if (!is.null(output_path) && nzchar(output_path)) output_path else dirname(seqtab_out)
+  dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+  filtered_dir <- if (!is.null(intermediate_path) && nzchar(intermediate_path)) intermediate_path else out_dir
+  dir.create(filtered_dir, recursive = TRUE, showWarnings = FALSE)
+  filtered_forward_reads <- file.path(filtered_dir, paste0(samples, ".filtered.R1.fastq.gz"))
+  filtered_reverse_reads <- file.path(filtered_dir, paste0(samples, ".filtered.R2.fastq.gz"))
+  
   # QUALITY PLOTS
   quality_plot <- function(data) {
     plot <- plotQualityProfile(data)
@@ -78,15 +94,17 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
   # CHIMERA REMOVAL
   seqtab.nochim <- removeBimeraDenovo(seqtab2, verbose = TRUE, method = "consensus", multithread = TRUE)
 
-  ########### Set working directory to output path
-  dir.create(output_path, recursive = TRUE, showWarnings = FALSE)
-  setwd(output_path)
+  ########### Outputs directory prepared above; do not change working directory
+  # Ensure declared Snakemake output directories exist
+  if (!is.null(track_out) && nzchar(track_out)) dir.create(dirname(track_out), recursive = TRUE, showWarnings = FALSE)
+  if (!is.null(qc_out) && nzchar(qc_out)) dir.create(dirname(qc_out), recursive = TRUE, showWarnings = FALSE)
+  if (!is.null(seqtab_out) && nzchar(seqtab_out)) dir.create(dirname(seqtab_out), recursive = TRUE, showWarnings = FALSE)
 
   # PERFORMANCE ASSESSMENT
   getN <- function(x) sum(getUniques(x))
 
   if (length(samples) != length(sapply(dada_reverse, getN))) {
-    original <- paste0(samples, ".filtered.R1.fastq.gz")
+    original <- file.path(out_dir, paste0(samples, ".filtered.R1.fastq.gz"))
     i <- match(original[!file.exists(original)], original)
     cat("sample: ", samples[i], " has been excluded from the analysis\n")
     samples <- samples[-i]
@@ -103,11 +121,20 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
                             nonchim = rowSums(seqtab.nochim),
                             final_perc_reads_retained = round(rowSums(seqtab.nochim)/filtered_out[, 1] * 100, 1))
 
-  write.table(summary_tab, "read_count_tracking.tsv", quote = FALSE, sep = "\t", col.names = NA)
+  # Write the summary table to the declared Snakemake output path
+  if (!is.null(track_out) && nzchar(track_out)) {
+    write.table(summary_tab, track_out, quote = FALSE, sep = "\t", col.names = NA)
+  } else {
+    write.table(summary_tab, file.path(out_dir, "read_count_tracking.tsv"), quote = FALSE, sep = "\t", col.names = NA)
+  }
 
   ################ OUTPUTS
   # SEQTAB
-  save(seqtab.nochim, file = "./seqtab.RData")
+  if (!is.null(seqtab_out) && nzchar(seqtab_out)) {
+    save(seqtab.nochim, file = seqtab_out)
+  } else {
+    save(seqtab.nochim, file = file.path(out_dir, "seqtab.RData"))
+  }
 
   # GENERATE PDF OF QUALITY PLOTS
   len <- length(fplots)
@@ -117,7 +144,7 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
   }
 
   i <- 1
-  pdf("qc.pdf", onefile = TRUE, paper = "a4", height = 9, width = 9)
+  pdf(if (!is.null(qc_out) && nzchar(qc_out)) qc_out else file.path(out_dir, "qc.pdf"), onefile = TRUE, paper = "a4", height = 9, width = 9)
   while (i <= max_pages * 3) {
     z <- i + 2
     grid.arrange(grobs = c(fplots[i:z], rplots[i:z]), ncol = 2, as.table = FALSE)
@@ -142,13 +169,6 @@ if (exists("snakemake")) {
     params = as.list(snakemake@params)
   )
 } else {
-  # Fallback for interactive debugging
-  main(
-    input_paths = list(),
-    output_paths = list(),
-    params = list(
-      sample_file_loc = "test_data",
-      results_dir = "results_debug"
-    )
-  )
+    # Fallback for interactive debugging
+    stop("This script is meant to be run by Snakemake. For interactive use, source() it and call main(...) manually.")
 }

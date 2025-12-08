@@ -12,55 +12,59 @@ suppressPackageStartupMessages({
 })
 
 main <- function(input_paths = list(), output_paths = list(), params = list()) {
-    # Snakemake params
-    script_path <- getwd()
-    samples <- params[["sample_file_loc"]]
-    asv_files <- params[["asv_dir"]]
-    metadata <- params[["metadata_dir"]]
-    out_dir <- params[["results_dir"]]
-    # Resolve sample input: accept either a directory containing samples.txt
-    # or a path to the samples file itself (e.g. "intermediate/trimmed" or "intermediate/trimmed/samples.txt").
-    if (grepl("\\.txt$", samples) || grepl("samples.txt$", samples)) {
-        samples_file <- file.path(script_path, samples)
-        samples_dir <- dirname(samples_file)
-    } else {
-        samples_dir <- file.path(script_path, samples)
-        samples_file <- file.path(samples_dir, "samples.txt")
+    # Map Snakemake inputs
+    samples_file    <- input_paths[["samples"]]    # intermediate/trimmed/samples.txt
+    asv_counts_file <- input_paths[["counts"]]     # results/asv/ASVs_counts.tsv
+    asv_tax_file    <- input_paths[["tax"]]        # results/asv/ASVs_taxonomy.tsv
+    asv_fasta_file  <- input_paths[["fa"]]         # results/asv/ASVs.fa
+    metadata_file   <- input_paths[["metadata"]]   # data/meta/metadata.tsv
+
+    # Map Snakemake outputs
+    starting_phyla_file <- output_paths[["starting_phyla"]]  # results/phyloseq/starting_phyla_table.tsv
+    prevalence_file     <- output_paths[["prevalence"]]      # results/phyloseq/prevalence_graph.png
+    phyloseq_file       <- output_paths[["phyloseq"]]        # results/phyloseq/Phyloseq.RData
+    asv_good_file       <- output_paths[["asv_good"]]        # results/phyloseq/ASVs_good.fasta
+
+    # Use the directory of the phyloseq file as the general output dir
+    output_dir <- dirname(phyloseq_file)
+    dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+    # Basic checks
+    if (any(vapply(list(samples_file, asv_counts_file, asv_tax_file,
+                        asv_fasta_file, metadata_file),
+                   is.null, logical(1)))) {
+        stop("Missing one or more required input_paths entries: expect names 'samples', 'counts', 'tax', 'fa', 'metadata'.")
     }
 
-    samples_path <- samples_dir
-    asv_files_path <- file.path(script_path, asv_files)
-    metadata_path <- file.path(script_path, metadata)
-    output_path <- file.path(script_path, out_dir)
-
-    dir.create(output_path, recursive = TRUE, showWarnings = FALSE)
+    if (any(vapply(list(starting_phyla_file, prevalence_file,
+                        phyloseq_file, asv_good_file),
+                   is.null, logical(1)))) {
+        stop("Missing one or more required output_paths entries: expect names 'starting_phyla', 'prevalence', 'phyloseq', 'asv_good'.")
+    }
 
     ############### PHYLOSEQ OBJECT CREATION
     # Start with loading sample names
-    if (!dir.exists(samples_path)) {
-        stop(sprintf("Samples directory not found: %s", samples_path))
-    }
-    setwd(samples_path)
-    if (!file.exists(basename(samples_file))) {
-        stop(sprintf("Samples file not found: %s", samples_file))
-    }
-    samples <- scan(file = basename(samples_file), what = "character")
+    samples <- scan(file = samples_file, what = "character")
 
     # Now loading the ASVs count_table and the ASVs tax_table
-    setwd(asv_files_path)
-    count_tab <- read.table("ASVs_counts.tsv", header = TRUE, row.names = 1, check.names = FALSE, sep = "\t", fill = TRUE)
+    count_tab <- read.table(asv_counts_file, header = TRUE, row.names = 1, check.names = FALSE, sep = "\t", fill = TRUE)
     # Replace colnames of count_table with the actual sample names
     colnames(count_tab) <- samples
-    tax_tab <- as.matrix(read.table("ASVs_taxonomy.tsv", header = TRUE, row.names = 1, check.names = FALSE, sep = "\t"), mode = "character")
+    tax_tab <- as.matrix(read.table(asv_tax_file, header = TRUE, row.names = 1, check.names = FALSE, sep = "\t"), mode = "character")
     # Also, read the ASVs sequences for further processing and for selecting the NAs to blast
-    ASVs <- read.fasta("ASVs.fa")
+    ASVs <- read.fasta(asv_fasta_file)
 
     # Load the metadata and check which ones match with the sample names of the files (keep only those)
-    setwd(metadata_path)
-    sample_info_tab <- read.table("metadata.tsv", header = TRUE, row.names = 1, check.names = FALSE, sep = "\t", fill = TRUE)
-    sample_info_tab <- filter(sample_info_tab, rownames(sample_info_tab) %in% samples)
-    order <- match(rownames(sample_info_tab), colnames(count_tab))
-    sample_info_tab <- arrange(sample_info_tab, order)
+    sample_info_tab <- read.table(metadata_file, header = TRUE, row.names = 1, check.names = FALSE, sep = "\t", fill = TRUE)
+    sample_info_tab <- sample_info_tab[rownames(sample_info_tab) %in% samples, , drop = FALSE]
+    missing_samples <- setdiff(colnames(count_tab), rownames(sample_info_tab))
+    if (length(missing_samples) > 0) {
+        stop(paste("Missing metadata for samples:", paste(missing_samples, collapse = ", ")))
+    }
+    sample_info_tab <- sample_info_tab[colnames(count_tab), , drop = FALSE]
+    if (!identical(colnames(count_tab), rownames(sample_info_tab))) {
+        stop("Sample names in metadata and count table do not match after filtering.")
+    }
 
     # Finally put all the informations together in a Phyloseq object
     Phyloseq_object <- phyloseq(otu_table(count_tab, taxa_are_rows = TRUE), sample_data(sample_info_tab), tax_table(tax_tab))
@@ -89,7 +93,6 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
     count_tab <- as.data.frame(otu_table(Phyloseq_object))
 
     # The formula has been set to "formula ~1" because this equals to no formula, since we are not using this data for differential expression.
-    metadata_fields <- colnames(data.frame(sample_data(Phyloseq_object)))
     deseq_counts <- DESeqDataSetFromMatrix(count_tab, colData = sample_info_tab, design = ~1)
     # If sparse table causes issues, use poscounts
     deseq_counts <- estimateSizeFactors(deseq_counts, type = "poscounts")
@@ -108,12 +111,13 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
     filterOrder <- "Chloroplast"
     filterFamily <- "Mitochondria"
 
-    Phyloseq_filt <- subset_taxa(Phyloseq_object, !is.na(phylum) | phylum != filterPhylum)
+    Phyloseq_filt <- subset_taxa(Phyloseq_object, !is.na(phylum) & phylum != filterPhylum)
     Phyloseq_filt <- subset_taxa(Phyloseq_filt, order != filterOrder)
     Phyloseq_filt <- subset_taxa(Phyloseq_filt, family != filterFamily)
 
     # Now determine who are the NAs ASVs (from the ASVs fasta file with sequences) and select them
-    condition <- any(is.na(data.frame(tax_table(Phyloseq_object))$phylum))
+    tax_df <- data.frame(tax_table(Phyloseq_object))
+    condition <- any(is.na(tax_df$phylum) | tax_df$phylum == filterPhylum)
 
     if (condition == TRUE) {
         cat("\n")
@@ -124,9 +128,8 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
         out <- match(NAs, names(ASVs))
         ASVs_NA <- ASVs[out]
         rm(NAs, out)
-        setwd(output_path)
         # write a fasta file containing all the sequences that have not been identified
-        write.fasta(sequences = ASVs_NA, names = names(ASVs_NA), file.out = "ASVs_NA.fasta")
+        write.fasta(sequences = ASVs_NA, names = names(ASVs_NA), file.out = file.path(output_dir, "ASVs_NA.fasta"))
     }
 
     # Build prevalence graph for prevalence filtering
@@ -144,19 +147,16 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
     Phyloseq_filt_vst <- prune_taxa(taxa_names(Phyloseq_filt), Phyloseq_object_vst)
 
     ############### OUTPUTS
-    setwd(output_path)
-
-    png("prevalence_graph.png")
-    prev_graph + geom_hline(yintercept = 0.02, alpha = 0.2, linetype = 2) + geom_point(size = 1, alpha = 0.7) + scale_x_log10() + xlab("Total Abundance") + ylab("Prevalence / NSamples") + facet_wrap(~phylum) + theme(legend.position = "none")
+    png(prevalence_file)
+    print(prev_graph + geom_hline(yintercept = 0.02, alpha = 0.2, linetype = 2) + geom_point(size = 1, alpha = 0.7) + scale_x_log10() + xlab("Total Abundance") + ylab("Prevalence / NSamples") + facet_wrap(~phylum) + theme(legend.position = "none"))
     dev.off()
 
     # And a fasta containing the sequences identified by SILVA
-    write.fasta(sequences = ASVs_good, names = names(ASVs_good), file.out = "ASVs_good.fasta")
+    write.fasta(sequences = ASVs_good, names = names(ASVs_good), file.out = asv_good_file)
 
-    write.table(starting_phyla_table, file = "starting_phyla_table.tsv")
+    write.table(starting_phyla_table, file = starting_phyla_file, quote = FALSE, sep = "\t", col.names = NA)
 
-    save(Phyloseq_object, Phyloseq_filt, Phyloseq_filt_vst, file = "Phyloseq.RData")
-    save.image(file = "phyl.RData")
+    save(Phyloseq_object, Phyloseq_filt, Phyloseq_filt_vst, file = phyloseq_file)
 }
 
 # --- Wrapper for Snakemake vs interactive execution ---
@@ -168,14 +168,5 @@ if (exists("snakemake")) {
     )
 } else {
     # Fallback for interactive debugging
-    main(
-        input_paths = list(),
-        output_paths = list(),
-        params = list(
-            sample_file_loc = "test_data",
-            asv_dir = ".",
-            metadata_dir = "meta",
-            results_dir = "results_debug"
-        )
-    )
+    stop("This script is meant to be run by Snakemake. For interactive use, source() it and call main(...) manually.")
 }

@@ -8,18 +8,22 @@ suppressPackageStartupMessages({
 })
 
 main <- function(input_paths = list(), output_paths = list(), params = list()) {
-  script_path <- getwd()
-  in_dir <- params[["in_dir"]]
-  out_dir <- params[["out_dir"]]
-  in_path <- file.path(script_path, in_dir)
-  out_path <- file.path(script_path, out_dir)
+  # Map Snakemake inputs
+  phyloseq_file <- input_paths[["phyloseq"]]    # results/phyloseq/Phyloseq.RData
 
+  # Map Snakemake params and outputs
+  in_dir_param <- params[["in_dir"]]
+  out_dir_param <- params[["out_dir"]]
+
+  if (is.null(phyloseq_file)) stop("Missing required input: 'phyloseq'")
+
+  in_path <- if (!is.null(in_dir_param)) in_dir_param else dirname(phyloseq_file)
+  out_path <- if (!is.null(out_dir_param)) out_dir_param else dirname(phyloseq_file)
   dir.create(out_path, recursive = TRUE, showWarnings = FALSE)
 
   ############### PHYLOSEQ ANALYSIS
-  # Start with loading RData containing Phyloseq objects and the tree
-  setwd(in_path)
-  load(file = "Phyloseq.RData")
+  # Load RData containing Phyloseq objects
+  load(phyloseq_file)
 
   # Also, removing columns in the metadata if one column is all NAs
   info <- sample_data(Phyloseq_filt)
@@ -103,13 +107,6 @@ if (exists("snakemake")) {
     params = as.list(snakemake@params)
   )
 } else {
-  # Fallback for interactive debugging
-  main(
-    input_paths = list(),
-    output_paths = list(),
-    params = list(
-      in_dir = ".",
-      out_dir = "results_debug"
-    )
-  )
+    # Fallback for interactive debugging
+    stop("This script is meant to be run by Snakemake. For interactive use, source() it and call main(...) manually.")
 }

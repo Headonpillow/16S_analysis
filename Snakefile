@@ -164,10 +164,9 @@ rule denoise_reads:
     qc = "results/denoising/qc.pdf",
     seqtab = "results/denoising/seqtab.RData"
   params:
-    # pass the full path to the samples file (script expects sample_file_loc)
-    sample_file_loc = "intermediate/trimmed/samples.txt",
     # output directory (script will create/use this dir)
-    results_dir = "results/denoising"
+    results_dir = "results/denoising",
+    intermediate_filtered_dir = "intermediate/dada_filtered"
   script: 
     "code/DADA2_2.0.R"
 
@@ -182,8 +181,6 @@ rule assign_taxonomy:
     tax = "results/asv/ASVs_taxonomy.tsv"
   params:
     database = "data/db/SILVA_SSU_r138_2_2024.RData",
-    dada_files_dir = "results/denoising",
-    results_dir = "results/asv"
   script:
     "code/Taxonomic_assignment.R"
 
@@ -210,14 +207,6 @@ rule filter_taxa_and_normalization:
     prevalence = "results/phyloseq/prevalence_graph.png",
     phyloseq = "results/phyloseq/Phyloseq.RData",
     asv_good = "results/phyloseq/ASVs_good.fasta"
-  params:
-    # pass full path to samples file
-    sample_file_loc = "intermediate/trimmed/samples.txt",
-    # directory where ASV outputs live
-    asv_dir = "results/asv",
-    # metadata directory (script expects directory containing metadata.tsv)
-    metadata_dir = "data/meta",
-    results_dir = "results/phyloseq"
   script:
     "code/Taxa_filtering.R"
 
