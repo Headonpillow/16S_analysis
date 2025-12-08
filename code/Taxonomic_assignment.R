@@ -16,11 +16,7 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
   tax_out <- output_paths[["tax"]]          # results/asv/ASVs_taxonomy.tsv
 
   # Map Snakemake params
-  db_param <- params[["database"]]
-
-  # Use the directory of the fa_out as the general output dir
-  output_dir <- dirname(fa_out)
-  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+  db_path <- params[["database"]]          # data/db/SILVA_SSU_r138_2_2024.RData
 
   # Basic checks
   if (is.null(seqtab_file)) {
@@ -30,11 +26,18 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
     stop("Missing required outputs: expect names 'fa','counts','tax'.")
   }
 
-  # Resolve path for database
-  db_path <- db_param
-  # Ensure paths are valid
+  # Resolve paths
+  # Use the directory of the fasta output as the general output dir
+  output_dir <- dirname(fa_out)
+  # It needs to be created from this script
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+  # Ensure it exists before proceeding
+  if (!dir.exists(output_dir)) {
+    stop(sprintf("Output directory could not be created: %s", output_dir))
+  }
+  # Comfirm database exists
   if (!is.null(db_path) && !file.exists(db_path)) {
-    db_path <- file.path(getwd(), db_param)
+    db_path <- file.path(getwd(), db_path)
   }
 
   # Load seqtab and database (do not change working directory)

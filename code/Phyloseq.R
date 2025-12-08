@@ -10,13 +10,21 @@ suppressPackageStartupMessages({
 main <- function(input_paths = list(), output_paths = list(), params = list()) {
   # Map Snakemake inputs
   phyloseq_file <- input_paths[["phyloseq"]]    # results/phyloseq/Phyloseq.RData
-
+  
+  # In this instance we are not tracking outputs, so leverage params for the outdir
   # Map Snakemake params and outputs
   out_path <- params[["out_dir"]]               # results/phyloseq/plots
-  dir.create(out_path, recursive = TRUE, showWarnings = FALSE)
 
   # Basic checks
   if (is.null(phyloseq_file)) stop("Missing required input: 'phyloseq'")
+
+  # Resolve paths
+  # Create the output directory (a subdirectory of results/phyloseq)
+  dir.create(out_path, recursive = TRUE, showWarnings = FALSE)
+  # Ensure it exists before proceeding
+  if (!dir.exists(out_path)) {
+    stop(sprintf("Output directory could not be created: %s", out_path))
+  }
 
   ############### PHYLOSEQ ANALYSIS
   # Load RData containing Phyloseq objects

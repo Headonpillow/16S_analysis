@@ -28,6 +28,7 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
   }
 
   # Resolve paths
+  # Use the samples directory as general input path (it should have been created from previous scripts)
   input_path <- dirname(samples_file)
   # Ensure the samples directory and file exist before proceeding
   if (!dir.exists(input_path)) {

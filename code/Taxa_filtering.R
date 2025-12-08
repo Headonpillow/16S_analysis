@@ -25,10 +25,6 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
     phyloseq_file       <- output_paths[["phyloseq"]]        # results/phyloseq/Phyloseq.RData
     asv_good_file       <- output_paths[["asv_good"]]        # results/phyloseq/ASVs_good.fasta
 
-    # Use the directory of the phyloseq file as the general output dir
-    output_dir <- dirname(phyloseq_file)
-    dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-
     # Basic checks
     if (any(vapply(list(samples_file, asv_counts_file, asv_tax_file,
                         asv_fasta_file, metadata_file),
@@ -40,6 +36,14 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
                         phyloseq_file, asv_good_file),
                    is.null, logical(1)))) {
         stop("Missing one or more required output_paths entries: expect names 'starting_phyla', 'prevalence', 'phyloseq', 'asv_good'.")
+    }
+    
+    # Resolve paths
+    # Use the directory of the phyloseq file as the general output dir (it should have been created from previous scripts)
+    output_dir <- dirname(phyloseq_file)
+    # Ensure it exists before proceeding
+    if (!dir.exists(output_dir)) {
+        stop(sprintf("Output directory not found: %s", output_dir))
     }
 
     ############### PHYLOSEQ OBJECT CREATION

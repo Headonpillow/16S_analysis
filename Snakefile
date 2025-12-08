@@ -164,7 +164,7 @@ rule denoise_reads:
     qc = "results/denoising/qc.pdf",
     seqtab = "results/denoising/seqtab.RData"
   params:
-    # output directory (script will create/use this dir)
+    # output directories (script will create/use this dir)
     results_dir = "results/denoising",
     intermediate_filtered_dir = "intermediate/dada_filtered"
   script: 
