@@ -1,4 +1,4 @@
-# Set default config values if not provided
+# Default config file for backward compatibility (overridden by --configfile)
 configfile: "config.yml"
 
 # Configure directory paths from config
