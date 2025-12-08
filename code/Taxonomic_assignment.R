@@ -1,67 +1,93 @@
-####SETTING THE ENVIRONMENT (and inputs)
+#### SETTING THE ENVIRONMENT (and inputs)
 
-suppressPackageStartupMessages(library(dada2))
-suppressPackageStartupMessages(library(DECIPHER))
+suppressPackageStartupMessages({
+  library(dada2)
+  library(DECIPHER)
+})
 
-script_path <- getwd()
-db <- snakemake@params[["database"]]
-dada <- snakemake@params[["dada_files_dir"]]
-out_dir <- snakemake@params[["results_dir"]]
+main <- function(input_paths = list(), output_paths = list(), params = list()) {
+  # Map Snakemake inputs
+  seqtab_file <- input_paths[["seqtab"]]    # results/denoising/seqtab.RData
+  samples_file <- input_paths[["samples"]]  # intermediate/trimmed/samples.txt
 
-db <- paste0(script_path, "/", db)
-dada_path <- paste0(script_path, "/", dada)
-output_path <- paste0(script_path, "/", out_dir)
+  # Map Snakemake outputs
+  fa_out <- output_paths[["fa"]]            # results/asv/ASVs.fa
+  counts_out <- output_paths[["counts"]]    # results/asv/ASVs_counts.tsv
+  tax_out <- output_paths[["tax"]]          # results/asv/ASVs_taxonomy.tsv
 
-setwd(dada_path)
-load(file="seqtab.RData")
+  # Map Snakemake params
+  db_path <- params[["database"]]          # data/db/SILVA_SSU_r138_2_2024.RData
 
-##TAXONOMY
+  # Basic checks
+  if (is.null(seqtab_file)) {
+    stop("Missing required input: 'seqtab'")
+  }
+  if (any(vapply(list(is.null(fa_out), is.null(counts_out), is.null(tax_out)), isTRUE, logical(1)))) {
+    stop("Missing required outputs: expect names 'fa','counts','tax'.")
+  }
 
-setwd(script_path)
-load(db)
+  # Resolve paths
+  # Use the directory of the fasta output as the general output dir
+  output_dir <- dirname(fa_out)
+  # It needs to be created from this script
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+  # Ensure it exists before proceeding
+  if (!dir.exists(output_dir)) {
+    stop(sprintf("Output directory could not be created: %s", output_dir))
+  }
+  # Comfirm database exists
+  if (!is.null(db_path) && !file.exists(db_path)) {
+    db_path <- file.path(getwd(), db_path)
+  }
 
-dna <- DNAStringSet(getSequences(seqtab.nochim))
-tax_info <- IdTaxa(test=dna, trainingSet=trainingSet, strand="both", processors=NULL, threshold=50)
+  # Load seqtab and database (do not change working directory)
+  load(seqtab_file)
+  if (!is.null(db_path) && file.exists(db_path)) load(db_path)
 
-#RENAMING ASVs
+  # TAXONOMY
+  dna <- DNAStringSet(getSequences(seqtab.nochim))
+  tax_info <- IdTaxa(test = dna, trainingSet = trainingSet, strand = "both", processors = NULL, threshold = 50)
 
-asv_seqs <- colnames(seqtab.nochim)
-asv_headers <- vector(dim(seqtab.nochim)[2], mode="character")
+  # RENAMING ASVs
+  asv_seqs <- colnames(seqtab.nochim)
+  asv_headers <- vector(dim(seqtab.nochim)[2], mode = "character")
+  for (i in seq_len(dim(seqtab.nochim)[2])) {
+    asv_headers[i] <- paste(">ASV", i, sep = "_")
+  }
 
-for (i in 1:dim(seqtab.nochim)[2]) {
-  asv_headers[i] <- paste(">ASV", i, sep="_")
+  lengths <- vapply(seq_along(asv_seqs), function(i) nchar(asv_seqs[i]), integer(1))
+  lengths_df <- data.frame(names = as.vector(asv_headers), lengths = as.vector(lengths))
+
+  # WRITING FASTA
+  asv_fasta <- c(rbind(asv_headers, asv_seqs))
+  write(asv_fasta, fa_out)
+
+  # WRITING ABUNDANCE TABLE
+  asv_tab <- t(seqtab.nochim)
+  row.names(asv_tab) <- sub(">", "", asv_headers)
+  write.table(asv_tab, counts_out, sep = "\t", quote = FALSE, col.names = NA)
+
+  # WRITING TAX TABLE
+  ranks <- c("domain", "phylum", "class", "order", "family", "genus", "species")
+  asv_tax <- t(sapply(tax_info, function(x) {
+    m <- match(ranks, x$rank)
+    taxa <- x$taxon[m]
+    taxa
+  }))
+  colnames(asv_tax) <- ranks
+  rownames(asv_tax) <- gsub(pattern = ">", replacement = "", x = asv_headers)
+
+  write.table(asv_tax, tax_out, sep = "\t", quote = FALSE, col.names = NA)
 }
 
-lengths <- vector()
-for (i in 1:length(asv_seqs)) {
-  asv_len <- length(strsplit(asv_seqs, "")[[i]])
-  lengths <- append(lengths, asv_len)
+# --- Wrapper for Snakemake vs interactive execution ---
+if (exists("snakemake")) {
+  main(
+    input_paths = as.list(snakemake@input),
+    output_paths = as.list(snakemake@output),
+    params = as.list(snakemake@params)
+  )
+} else {
+    # Fallback for interactive debugging
+    stop("This script is meant to be run by Snakemake. For interactive use, source() it and call main(...) manually.")
 }
-lengths_df <- data.frame(names = as.vector(asv_headers))
-lengths_df <- cbind(lengths_df, lengths = as.vector(lengths))
-
-setwd(output_path)
-
-#WRITING FASTA
-
-asv_fasta <- c(rbind(asv_headers, asv_seqs))
-write(asv_fasta, "ASVs.fa")
-
-#WRITING ABUNDANCE TABLE
-
-asv_tab <- t(seqtab.nochim)
-row.names(asv_tab) <- sub(">", "", asv_headers)
-write.table(asv_tab, "ASVs_counts.tsv", sep="\t", quote=F, col.names=NA)
-
-#WRITING TAX TABLE
-
-ranks <- c("domain", "phylum", "class", "order", "family", "genus", "species")
-asv_tax <- t(sapply(tax_info, function(x) {
-  m <- match(ranks, x$rank)
-  taxa <- x$taxon[m]
-  taxa
-}))
-colnames(asv_tax) <- ranks
-rownames(asv_tax) <- gsub(pattern=">", replacement="", x=asv_headers)
-
-write.table(asv_tax, "ASVs_taxonomy.tsv", sep = "\t", quote=F, col.names=NA)

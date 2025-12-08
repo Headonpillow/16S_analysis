@@ -158,30 +158,29 @@ rule retrieve_samplenames:
 rule denoise_reads:
   conda: "r.yml"
   input:
-    "intermediate/trimmed/samples.txt" 
+    samples = "intermediate/trimmed/samples.txt"
   output:
-    "results/denoising/read_count_tracking.tsv",
-    "results/denoising/qc.pdf",
-    "results/denoising/seqtab.RData"
+    track = "results/denoising/read_count_tracking.tsv",
+    qc = "results/denoising/qc.pdf",
+    seqtab = "results/denoising/seqtab.RData"
   params:
-    sample_file_loc = "intermediate/trimmed",
-    results_dir = "results/denoising"
+    # output directories (script will create/use this dir)
+    results_dir = "results/denoising",
+    intermediate_filtered_dir = "intermediate/dada_filtered"
   script: 
     "code/DADA2_2.0.R"
 
 rule assign_taxonomy:
   conda: "r.yml"
   input: 
-    "intermediate/trimmed/samples.txt",
-    "results/denoising/seqtab.RData"
+    samples = "intermediate/trimmed/samples.txt",
+    seqtab = "results/denoising/seqtab.RData"
   output:
-    "results/asv/ASVs.fa", 
-    "results/asv/ASVs_counts.tsv",
-    "results/asv/ASVs_taxonomy.tsv"
+    fa = "results/asv/ASVs.fa", 
+    counts = "results/asv/ASVs_counts.tsv",
+    tax = "results/asv/ASVs_taxonomy.tsv"
   params:
     database = "data/db/SILVA_SSU_r138_2_2024.RData",
-    dada_files_dir = "results/denoising",
-    results_dir = "results/asv"
   script:
     "code/Taxonomic_assignment.R"
 
@@ -198,21 +197,16 @@ rule assign_taxonomy:
 rule filter_taxa_and_normalization:
   conda: "r.yml"
   input:
-    "intermediate/trimmed/samples.txt",
-    "results/asv/ASVs_counts.tsv",
-    "results/asv/ASVs_taxonomy.tsv",
-    "results/asv/ASVs.fa",
-    "data/meta/metadata.tsv"
+    samples = "intermediate/trimmed/samples.txt",
+    counts = "results/asv/ASVs_counts.tsv",
+    tax = "results/asv/ASVs_taxonomy.tsv",
+    fa = "results/asv/ASVs.fa",
+    metadata = "data/meta/metadata.tsv"
   output:
-    "results/phyloseq/starting_phyla_table.tsv",
-    "results/phyloseq/prevalence_graph.png",
-    "results/phyloseq/Phyloseq.RData",
-    "results/phyloseq/ASVs_good.fasta"
-  params:
-    sample_file_loc = "intermediate/trimmed",
-    asv_dir = "results/asv",
-    metadata_dir = "data/meta",
-    results_dir = "results/phyloseq"
+    starting_phyla = "results/phyloseq/starting_phyla_table.tsv",
+    prevalence = "results/phyloseq/prevalence_graph.png",
+    phyloseq = "results/phyloseq/Phyloseq.RData",
+    asv_good = "results/phyloseq/ASVs_good.fasta"
   script:
     "code/Taxa_filtering.R"
 
@@ -245,9 +239,9 @@ if config['phylogeny'] in ["yes"]:
 rule run_phyloseq_analysis:
   conda: "r.yml"
   input:
-    "results/phyloseq/Phyloseq.RData"
+    phyloseq = "results/phyloseq/Phyloseq.RData"
   params:
-    in_dir = "results/phyloseq",
+    # full path to output plots directory
     out_dir = "results/phyloseq/plots"
   output:
     "results/phyloseq/plots/plot_1.tiff"

@@ -1,4 +1,5 @@
 # PREVALENCE FILTERING
+# TODO: Align path handling with snakemake-style inputs/outputs (see Taxa_filtering.R) to remove hardcoded paths and setwd usage.
 
 # Here you first extract an OTU table from the phyloseq object Tanzania (for getting read counts for sample, for OTU), then ceck where are the taxa in the phyloseq object Tanzania, they're on columns.
 # Then, you apply on the columns a function to sum all the times the OTU read count was above zero. (counting on samples, so MAX is 74 times in this case)
