@@ -14,20 +14,20 @@ The intended contents of each directory is explained in separate README.md files
 
 This approach keeps each analysis run isolated in its own directory.
 
-1) Create a run-specific directory and copy the config template:
+1) Use the helper script to set up a new run:
 
 ``` {bash}
-mkdir -p runs/my_run
-cp config_templates/basic.yaml runs/my_run/config.yaml
+./setup_run.sh my_run
 ```
 
-2) Create the required data structure inside your run directory:
+Or manually create the structure:
 
 ``` {bash}
 mkdir -p runs/my_run/data/{raw_external,db,meta}
+cp config_templates/basic.yaml runs/my_run/config.yaml
 ```
 
-3) Put your raw data, database and metadata in:
+2) Put your raw data, database and metadata in:
 
 * `runs/my_run/data/raw_external/` - Your .fastq.gz files
 * `runs/my_run/data/db/` - SILVA database file
@@ -35,9 +35,9 @@ mkdir -p runs/my_run/data/{raw_external,db,meta}
 
 > Metadata file should be in **.tsv** format, the names of the raw files should follow the convention "**{your_sample}**.R1.fastq.gz" to work.
 
-4) Edit `runs/my_run/config.yaml` to customize settings if needed.
+3) Edit `runs/my_run/config.yaml` to customize settings if needed.
 
-5) Run the pipeline from the repository root:
+4) Run the pipeline from the repository root:
 
 ``` {bash}
 snakemake --configfile runs/my_run/config.yaml --directory runs/my_run --use-conda --cores all all
