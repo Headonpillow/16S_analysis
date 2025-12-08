@@ -241,8 +241,6 @@ rule run_phyloseq_analysis:
   input:
     phyloseq = "results/phyloseq/Phyloseq.RData"
   params:
-    # directory containing `Phyloseq.RData`
-    in_dir = "results/phyloseq",
     # full path to output plots directory
     out_dir = "results/phyloseq/plots"
   output:

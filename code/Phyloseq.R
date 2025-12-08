@@ -12,14 +12,11 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
   phyloseq_file <- input_paths[["phyloseq"]]    # results/phyloseq/Phyloseq.RData
 
   # Map Snakemake params and outputs
-  in_dir_param <- params[["in_dir"]]
-  out_dir_param <- params[["out_dir"]]
-
-  if (is.null(phyloseq_file)) stop("Missing required input: 'phyloseq'")
-
-  in_path <- if (!is.null(in_dir_param)) in_dir_param else dirname(phyloseq_file)
-  out_path <- if (!is.null(out_dir_param)) out_dir_param else dirname(phyloseq_file)
+  out_path <- params[["out_dir"]]               # results/phyloseq/plots
   dir.create(out_path, recursive = TRUE, showWarnings = FALSE)
+
+  # Basic checks
+  if (is.null(phyloseq_file)) stop("Missing required input: 'phyloseq'")
 
   ############### PHYLOSEQ ANALYSIS
   # Load RData containing Phyloseq objects
@@ -33,8 +30,8 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
   sample_data(Phyloseq_filt_vst) <- info
   rm(info, rm)
 
-  # Save them again
-  save(Phyloseq_filt, Phyloseq_filt_vst, file = "Phyloseq.RData")
+  # Save updated Phyloseq objects back to the provided input file (do not change working dir)
+  save(Phyloseq_filt, Phyloseq_filt_vst, file = phyloseq_file)
 
   ############### BETA DIVERSITY PRELIMINARY FIGURES
   metadata_fields <- colnames(data.frame(sample_data(Phyloseq_filt_vst)))
@@ -65,14 +62,12 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
 
   rm(i, name)
 
-  # Change the output path
-  setwd(out_path)
-
+  # Write plots to the declared output directory (do not change working dir)
   i <- 0
   for (plot in plot_list) {
     i <- i + 1
-    file_name = paste("plot_", i, ".tiff", sep = "")
-    tiff(file_name)
+    file_name <- paste0("plot_", i, ".tiff")
+    tiff(filename = file.path(out_path, file_name))
     print(plot_list[[i]])
     dev.off()
   }

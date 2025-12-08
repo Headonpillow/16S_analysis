@@ -107,23 +107,19 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
 
     ############### FILTERS
     # Filtering obvious taxa that should not be here or that have not been properly classified
-    filterPhylum <- "unclassified_Bacteria"
-    filterOrder <- "Chloroplast"
-    filterFamily <- "Mitochondria"
-
-    Phyloseq_filt <- subset_taxa(Phyloseq_object, !is.na(phylum) & phylum != filterPhylum)
-    Phyloseq_filt <- subset_taxa(Phyloseq_filt, order != filterOrder)
-    Phyloseq_filt <- subset_taxa(Phyloseq_filt, family != filterFamily)
+    Phyloseq_filt <- subset_taxa(Phyloseq_object, !is.na(phylum) & phylum != "unclassified_Bacteria")
+    Phyloseq_filt <- subset_taxa(Phyloseq_filt, order != "Chloroplast")
+    Phyloseq_filt <- subset_taxa(Phyloseq_filt, family != "Mitochondria")
 
     # Now determine who are the NAs ASVs (from the ASVs fasta file with sequences) and select them
     tax_df <- data.frame(tax_table(Phyloseq_object))
-    condition <- any(is.na(tax_df$phylum) | tax_df$phylum == filterPhylum)
+    condition <- any(is.na(tax_df$phylum) | tax_df$phylum == "unclassified_Bacteria")
 
     if (condition == TRUE) {
         cat("\n")
         cat("Some ASVs were not identified, or not bacteria, they have been removed and stored in ASVs_NA")
         cat("\n")
-        NAs <- subset_taxa(Phyloseq_object, is.na(phylum) | phylum == filterPhylum)
+        NAs <- subset_taxa(Phyloseq_object, is.na(phylum) | phylum == "unclassified_Bacteria")
         NAs <- taxa_names(NAs)
         out <- match(NAs, names(ASVs))
         ASVs_NA <- ASVs[out]
