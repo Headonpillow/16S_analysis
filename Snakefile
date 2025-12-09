@@ -161,6 +161,7 @@ rule prepare_trimmed:
     """
     mkdir -p {params.outdir}
     mkdir -p {LOGS_DIR}
+    # Branch based on preprocess flag: trim or copy raw files
     if [ "{params.should_trim}" = "true" ]; then
       trim_galore --illumina --clip_R1 5 --clip_R2 5 --length 200 --paired {params.indir}/*fastq.gz -o {params.outdir} > {log} 2>&1
       rm {params.outdir}/*report.txt
