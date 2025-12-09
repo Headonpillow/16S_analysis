@@ -29,3 +29,6 @@ Thumbs.db
 !.gitignore
 !README.md
 dag.svg
+
+# Ignore interactive runner scripts (local convenience, not committed)
+scripts/interactive/
