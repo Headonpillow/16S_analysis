@@ -154,14 +154,14 @@ rule prepare_trimmed:
   params:
     indir = RAW_DATA_PATH,
     outdir = TRIMMED_PATH,
-    do_trim = enabled("preprocess")
+    should_trim = "true" if enabled("preprocess") else "false"
   log:
     f"{LOGS_DIR}/prepare_trimmed.log"
   shell:
     """
     mkdir -p {params.outdir}
     mkdir -p {LOGS_DIR}
-    if [ "{params.do_trim}" = "True" ]; then
+    if [ "{params.should_trim}" = "true" ]; then
       trim_galore --illumina --clip_R1 5 --clip_R2 5 --length 200 --paired {params.indir}/*fastq.gz -o {params.outdir} > {log} 2>&1
       rm {params.outdir}/*report.txt
       for f in {params.outdir}/*_val_1.fq.gz; do mv -- "$f" "${{f%_val_1.fq.gz}}.fastq.gz"; done
