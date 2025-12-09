@@ -1,6 +1,13 @@
 # Default config file for backward compatibility (overridden by --configfile)
 configfile: "config.yml"
 
+# Helper function to handle different truthy formats
+def enabled(key):
+    v = config.get(key, False)
+    if isinstance(v, str):
+        return v.lower() in ("yes","y","true","1")
+    return bool(v)
+
 # Configure directory paths from config
 DATA_DIR = config.get("data_dir", "data")
 RAW_DATA_SUBDIR = config.get("raw_data_subdir", "raw_external")
@@ -24,45 +31,42 @@ IDS, = glob_wildcards(f"{RAW_DATA_PATH}/{{id}}.fastq.gz")
 # directory + subdirectory, maybe to solve later implementing 
 # other directories, for now excluding "/" works
 
-# Here's a conditional statement to check whether the user
-# running the pipeline wants the QC and primer removal to happen
-# or not.
-# Based on that the input list for rule all will be different.
-myoutput = [f"{RESULTS_DIR}/denoising/read_count_tracking.tsv",
-f"{RESULTS_DIR}/denoising/qc.pdf",
-f"{RESULTS_DIR}/asv/ASVs.fa", 
-f"{RESULTS_DIR}/asv/ASVs_counts.tsv",
-f"{RESULTS_DIR}/asv/ASVs_taxonomy.tsv",
-f"{RESULTS_DIR}/phyloseq/starting_phyla_table.tsv",
-f"{RESULTS_DIR}/phyloseq/prevalence_graph.png",
-f"{RESULTS_DIR}/phyloseq/Phyloseq.RData",
-f"{RESULTS_DIR}/phyloseq/ASVs_good.fasta",
-f"{RESULTS_DIR}/phyloseq/plots/plot_1.tiff"]
-
-if config['preprocess'] in ["yes"]:
-  extended = [f"{RESULTS_DIR}/multiQC/report_R1.html", 
-  f"{RESULTS_DIR}/multiQC/report_R2.html",
-  f"{RESULTS_DIR}/multiQC_trimmed/report_R1.html",
-  f"{RESULTS_DIR}/multiQC_trimmed/report_R2.html"]
-  myoutput = myoutput + extended
-
-print(myoutput)
-
-if config['phylogeny'] in ["yes"]:
-  extended = [f"{RESULTS_DIR}/phyloseq/ASV_alignment.mafft",
-  f"{RESULTS_DIR}/phyloseq/ASV_alignment.mafft.treefile"]
-  myoutput = myoutput + extended
+# Dynamic target list based on config flags
+def all_targets():
+    targets = [
+        f"{RESULTS_DIR}/denoising/read_count_tracking.tsv",
+        f"{RESULTS_DIR}/denoising/qc.pdf",
+        f"{RESULTS_DIR}/asv/ASVs.fa", 
+        f"{RESULTS_DIR}/asv/ASVs_counts.tsv",
+        f"{RESULTS_DIR}/asv/ASVs_taxonomy.tsv",
+        f"{RESULTS_DIR}/phyloseq/starting_phyla_table.tsv",
+        f"{RESULTS_DIR}/phyloseq/prevalence_graph.png",
+        f"{RESULTS_DIR}/phyloseq/Phyloseq.RData",
+        f"{RESULTS_DIR}/phyloseq/ASVs_good.fasta",
+        f"{RESULTS_DIR}/phyloseq/plots/plot_1.tiff",
+    ]
+    if enabled("preprocess"):
+        targets += [
+            f"{RESULTS_DIR}/multiQC/report_R1.html",
+            f"{RESULTS_DIR}/multiQC/report_R2.html",
+            f"{RESULTS_DIR}/multiQC_trimmed/report_R1.html",
+            f"{RESULTS_DIR}/multiQC_trimmed/report_R2.html",
+        ]
+    if enabled("phylogeny"):
+        targets += [
+            f"{RESULTS_DIR}/phyloseq/ASV_alignment.mafft",
+            f"{RESULTS_DIR}/phyloseq/ASV_alignment.mafft.treefile",
+        ]
+    return targets
 
 rule all: 
   input:
-    myoutput
+    all_targets()
 
 #################### RULES FOR QUALITY CONTROL AND TRIMMING
 
-# Here's a second conditional statement to check according
-# to what the user chose to run or not the preprocessing
-
-if config['preprocess'] in ["yes"]:
+# Preprocessing rules - only included when preprocess flag is enabled
+if enabled("preprocess"):
 
   rule FastQC:
     conda: "16s_analysis.yml"
@@ -77,7 +81,7 @@ if config['preprocess'] in ["yes"]:
       f"{LOGS_DIR}/fastqc.log"
     shell:
       """
-      [ ! -d {params.outdir} ] && mkdir -p {params.outdir}
+      mkdir -p {params.outdir}
       mkdir -p {LOGS_DIR}
       fastqc -o {params.outdir} {params.indir}/*.gz > {log} 2>&1
       """
@@ -96,31 +100,10 @@ if config['preprocess'] in ["yes"]:
       f"{LOGS_DIR}/multiqc.log"
     shell:
       """
-      [ ! -d {params.outdir} ] && mkdir -p {params.outdir}
+      mkdir -p {params.outdir}
       mkdir -p {LOGS_DIR}
       multiqc -n report_R1 {params.fastqc_dir}/*R1_fastqc.zip -o {params.outdir} > {log} 2>&1
       multiqc -n report_R2 {params.fastqc_dir}/*R2_fastqc.zip -o {params.outdir} >> {log} 2>&1
-      """
-
-  rule Trim_galore:
-    conda: "16s_analysis.yml"
-    input:
-      expand(f"{RAW_DATA_PATH}/{{id}}.fastq.gz", id=IDS)
-    output:
-      expand(f"{TRIMMED_PATH}/{{id}}.fastq.gz", id=IDS)
-    params:
-      indir = RAW_DATA_PATH,
-      outdir = TRIMMED_PATH
-    log:
-      f"{LOGS_DIR}/trim_galore.log"
-    shell:
-      """
-      mkdir -p {params.outdir}
-      mkdir -p {LOGS_DIR}
-      trim_galore --illumina --clip_R1 5 --clip_R2 5 --length 200 --paired {params.indir}/*fastq.gz -o {params.outdir} > {log} 2>&1
-      rm {params.outdir}/*report.txt
-      for f in {params.outdir}/*_val_1.fq.gz; do mv -- "$f" "${{f%_val_1.fq.gz}}.fastq.gz"; done
-      for f in {params.outdir}/*_val_2.fq.gz; do mv -- "$f" "${{f%_val_2.fq.gz}}.fastq.gz"; done
       """
 
   rule FastQC_trimmed:
@@ -136,7 +119,7 @@ if config['preprocess'] in ["yes"]:
       f"{LOGS_DIR}/fastqc_trimmed.log"
     shell:
       """
-      [ ! -d {params.outdir} ] && mkdir -p {params.outdir}
+      mkdir -p {params.outdir}
       mkdir -p {LOGS_DIR}
       fastqc -o {params.outdir} {params.indir}/*.gz > {log} 2>&1
       """
@@ -155,26 +138,40 @@ if config['preprocess'] in ["yes"]:
       f"{LOGS_DIR}/multiqc_trimmed.log"
     shell:
       """
-      [ ! -d {params.outdir} ] && mkdir -p {params.outdir}
+      mkdir -p {params.outdir}
       mkdir -p {LOGS_DIR}
       multiqc -n report_R1 {params.fastqc_dir}/*R1_fastqc.zip -o {params.outdir} > {log} 2>&1
       multiqc -n report_R2 {params.fastqc_dir}/*R2_fastqc.zip -o {params.outdir} >> {log} 2>&1
       """
 
-else:
-  rule move_raw_files_to_trimmed:
-    input:
-      expand(f"{RAW_DATA_PATH}/{{id}}.fastq.gz", id=IDS)
-    output:
-      expand(f"{TRIMMED_PATH}/{{id}}.fastq.gz", id=IDS)
-    params:
-      indir = RAW_DATA_PATH,
-      outdir = TRIMMED_PATH
-    shell:
-      """
-      mkdir -p {params.outdir}
+# Single rule that branches based on preprocess flag
+rule prepare_trimmed:
+  conda: "16s_analysis.yml"
+  input:
+    expand(f"{RAW_DATA_PATH}/{{id}}.fastq.gz", id=IDS)
+  output:
+    expand(f"{TRIMMED_PATH}/{{id}}.fastq.gz", id=IDS)
+  params:
+    indir = RAW_DATA_PATH,
+    outdir = TRIMMED_PATH,
+    should_trim = "true" if enabled("preprocess") else "false"
+  log:
+    f"{LOGS_DIR}/prepare_trimmed.log"
+  shell:
+    """
+    mkdir -p {params.outdir}
+    mkdir -p {LOGS_DIR}
+    # Branch based on preprocess flag: trim or copy raw files
+    if [ "{params.should_trim}" = "true" ]; then
+      trim_galore --illumina --clip_R1 5 --clip_R2 5 --length 200 --paired {params.indir}/*fastq.gz -o {params.outdir} > {log} 2>&1
+      rm {params.outdir}/*report.txt
+      for f in {params.outdir}/*_val_1.fq.gz; do mv -- "$f" "${{f%_val_1.fq.gz}}.fastq.gz"; done
+      for f in {params.outdir}/*_val_2.fq.gz; do mv -- "$f" "${{f%_val_2.fq.gz}}.fastq.gz"; done
+    else
       cp {params.indir}/*.gz {params.outdir}
-      """
+      echo "Skipping trimming, copying raw files" > {log}
+    fi
+    """
 
 #################### RULES FOR DENOISING AND TAX ASSIGNMENT 
 
@@ -271,7 +268,8 @@ rule filter_taxa_and_normalization:
   script:
     "code/Taxa_filtering.R"
 
-if config['phylogeny'] in ["yes"]:
+# Phylogeny rules - only included when phylogeny flag is enabled
+if enabled("phylogeny"):
 
   rule align_seqs:
     conda: "16s_analysis.yml"
