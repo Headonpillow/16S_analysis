@@ -47,7 +47,19 @@ Note: `setup_run.sh` sets a default shared conda prefix at `./.snakemake/conda` 
 
 If you use a repo-local shared prefix, add `/.snakemake/` to `.gitignore` to avoid committing environment files.
 
-This will create all outputs (`results/`, `intermediate/`, etc.) inside `runs/my_run/`, keeping your runs isolated.
+This will create all outputs inside `runs/my_run/`, keeping your runs isolated. The run directory structure will be:
+
+```
+runs/my_run/
+├── config.yaml           # Run configuration
+├── data/                 # Input data (not tracked in git)
+│   ├── raw_external/    # Raw fastq.gz files
+│   ├── db/              # SILVA database
+│   └── meta/            # Metadata files
+├── intermediate/        # Intermediate processing files
+├── results/             # Final results and outputs
+└── logs/                # Pipeline execution logs
+```
 
 ### Option 2: Legacy repository-root workflow
 

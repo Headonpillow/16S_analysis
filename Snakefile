@@ -8,6 +8,7 @@ DB_SUBDIR = config.get("db_subdir", "db")
 META_SUBDIR = config.get("meta_subdir", "meta")
 INTERMEDIATE_DIR = config.get("intermediate_dir", "intermediate")
 RESULTS_DIR = config.get("results_dir", "results")
+LOGS_DIR = config.get("logs_dir", "logs")
 
 # Construct full paths
 RAW_DATA_PATH = f"{DATA_DIR}/{RAW_DATA_SUBDIR}"
@@ -72,10 +73,13 @@ if config['preprocess'] in ["yes"]:
     params:
       outdir = f"{RESULTS_DIR}/fastqc",
       indir = RAW_DATA_PATH
+    log:
+      f"{LOGS_DIR}/fastqc.log"
     shell:
       """
       [ ! -d {params.outdir} ] && mkdir -p {params.outdir}
-      fastqc -o {params.outdir} {params.indir}/*.gz
+      mkdir -p {LOGS_DIR}
+      fastqc -o {params.outdir} {params.indir}/*.gz > {log} 2>&1
       """
 
   rule MultiQC:
@@ -88,11 +92,14 @@ if config['preprocess'] in ["yes"]:
     params:
       outdir = f"{RESULTS_DIR}/multiQC",
       fastqc_dir = f"{RESULTS_DIR}/fastqc"
+    log:
+      f"{LOGS_DIR}/multiqc.log"
     shell:
       """
       [ ! -d {params.outdir} ] && mkdir -p {params.outdir}
-      multiqc -n report_R1 {params.fastqc_dir}/*R1_fastqc.zip -o {params.outdir}
-      multiqc -n report_R2 {params.fastqc_dir}/*R2_fastqc.zip -o {params.outdir}
+      mkdir -p {LOGS_DIR}
+      multiqc -n report_R1 {params.fastqc_dir}/*R1_fastqc.zip -o {params.outdir} > {log} 2>&1
+      multiqc -n report_R2 {params.fastqc_dir}/*R2_fastqc.zip -o {params.outdir} >> {log} 2>&1
       """
 
   rule Trim_galore:
@@ -104,10 +111,13 @@ if config['preprocess'] in ["yes"]:
     params:
       indir = RAW_DATA_PATH,
       outdir = TRIMMED_PATH
+    log:
+      f"{LOGS_DIR}/trim_galore.log"
     shell:
       """
       mkdir -p {params.outdir}
-      trim_galore --illumina --clip_R1 5 --clip_R2 5 --length 200 --paired {params.indir}/*fastq.gz -o {params.outdir}
+      mkdir -p {LOGS_DIR}
+      trim_galore --illumina --clip_R1 5 --clip_R2 5 --length 200 --paired {params.indir}/*fastq.gz -o {params.outdir} > {log} 2>&1
       rm {params.outdir}/*report.txt
       for f in {params.outdir}/*_val_1.fq.gz; do mv -- "$f" "${{f%_val_1.fq.gz}}.fastq.gz"; done
       for f in {params.outdir}/*_val_2.fq.gz; do mv -- "$f" "${{f%_val_2.fq.gz}}.fastq.gz"; done
@@ -122,10 +132,13 @@ if config['preprocess'] in ["yes"]:
     params:
       outdir = f"{RESULTS_DIR}/fastqc_trimmed",
       indir = TRIMMED_PATH
+    log:
+      f"{LOGS_DIR}/fastqc_trimmed.log"
     shell:
       """
       [ ! -d {params.outdir} ] && mkdir -p {params.outdir}
-      fastqc -o {params.outdir} {params.indir}/*.gz
+      mkdir -p {LOGS_DIR}
+      fastqc -o {params.outdir} {params.indir}/*.gz > {log} 2>&1
       """
 
   rule MultiQC_trimmed:
@@ -138,11 +151,14 @@ if config['preprocess'] in ["yes"]:
     params:
       outdir = f"{RESULTS_DIR}/multiQC_trimmed",
       fastqc_dir = f"{RESULTS_DIR}/fastqc_trimmed"
+    log:
+      f"{LOGS_DIR}/multiqc_trimmed.log"
     shell:
       """
       [ ! -d {params.outdir} ] && mkdir -p {params.outdir}
-      multiqc -n report_R1 {params.fastqc_dir}/*R1_fastqc.zip -o {params.outdir}
-      multiqc -n report_R2 {params.fastqc_dir}/*R2_fastqc.zip -o {params.outdir}
+      mkdir -p {LOGS_DIR}
+      multiqc -n report_R1 {params.fastqc_dir}/*R1_fastqc.zip -o {params.outdir} > {log} 2>&1
+      multiqc -n report_R2 {params.fastqc_dir}/*R2_fastqc.zip -o {params.outdir} >> {log} 2>&1
       """
 
 else:
@@ -186,6 +202,8 @@ rule retrieve_samplenames:
     f"{TRIMMED_PATH}/samples.txt"
   params:
     trimmed_files_loc = TRIMMED_PATH
+  log:
+    f"{LOGS_DIR}/retrieve_samplenames.log"
   script:
     "code/retrieve_names.py"
 
@@ -204,6 +222,8 @@ rule denoise_reads:
     # output directories (script will create/use this dir)
     results_dir = f"{RESULTS_DIR}/denoising",
     intermediate_filtered_dir = FILTERED_PATH
+  log:
+    f"{LOGS_DIR}/denoise_reads.log"
   script: 
     "code/DADA2_2.0.R"
 
@@ -218,6 +238,8 @@ rule assign_taxonomy:
     tax = f"{RESULTS_DIR}/asv/ASVs_taxonomy.tsv"
   params:
     database = f"{DB_PATH}/{config.get('silva_db', 'SILVA_SSU_r138_2_2024.RData')}",
+  log:
+    f"{LOGS_DIR}/assign_taxonomy.log"
   script:
     "code/Taxonomic_assignment.R"
 
@@ -244,6 +266,8 @@ rule filter_taxa_and_normalization:
     prevalence = f"{RESULTS_DIR}/phyloseq/prevalence_graph.png",
     phyloseq = f"{RESULTS_DIR}/phyloseq/Phyloseq.RData",
     asv_good = f"{RESULTS_DIR}/phyloseq/ASVs_good.fasta"
+  log:
+    f"{LOGS_DIR}/filter_taxa_and_normalization.log"
   script:
     "code/Taxa_filtering.R"
 
@@ -258,9 +282,12 @@ if config['phylogeny'] in ["yes"]:
     params:
       infile = f"{RESULTS_DIR}/phyloseq/ASVs_good.fasta",
       outfile = f"{RESULTS_DIR}/phyloseq/ASV_alignment.mafft"
+    log:
+      f"{LOGS_DIR}/align_seqs.log"
     shell:
       """
-      mafft --auto {params.infile} > {params.outfile}
+      mkdir -p {LOGS_DIR}
+      mafft --auto {params.infile} > {params.outfile} 2> {log}
       """
 
   rule build_tree:
@@ -271,9 +298,12 @@ if config['phylogeny'] in ["yes"]:
       f"{RESULTS_DIR}/phyloseq/ASV_alignment.mafft.treefile"
     params:
       infile = f"{RESULTS_DIR}/phyloseq/ASV_alignment.mafft"
+    log:
+      f"{LOGS_DIR}/build_tree.log"
     shell:
       """
-      iqtree -s {params.infile} -m GTR -B 1000 -alrt 1000 -T AUTO --redo-tree
+      mkdir -p {LOGS_DIR}
+      iqtree -s {params.infile} -m GTR -B 1000 -alrt 1000 -T AUTO --redo-tree > {log} 2>&1
       """
 
 #################### RULES FOR DOWNSTREAM PHYLOGENETIC ANALYSIS
@@ -287,6 +317,8 @@ rule run_phyloseq_analysis:
     out_dir = f"{RESULTS_DIR}/phyloseq/plots"
   output:
     f"{RESULTS_DIR}/phyloseq/plots/plot_1.tiff"
+  log:
+    f"{LOGS_DIR}/phyloseq_analysis.log"
   script:
     "code/Phyloseq.R"
 
