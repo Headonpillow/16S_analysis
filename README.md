@@ -39,9 +39,13 @@ cp config_templates/basic.yaml runs/my_run/config.yaml
 
 4) Run the pipeline from the repository root:
 
-``` {bash}
-snakemake --configfile runs/my_run/config.yaml --directory runs/my_run --use-conda --cores all all
+```bash
+snakemake --configfile runs/my_run/config.yaml --directory runs/my_run --use-conda --conda-prefix ./.snakemake/conda --cores all all
 ```
+
+Note: `setup_run.sh` sets a default shared conda prefix at `./.snakemake/conda` (you can override this by exporting `CONDA_PREFIX`). Using a shared `--conda-prefix` prevents Snakemake from downloading duplicate environments into each `runs/<id>/.snakemake/conda`.
+
+If you use a repo-local shared prefix, add `/.snakemake/` to `.gitignore` to avoid committing environment files.
 
 This will create all outputs (`results/`, `intermediate/`, etc.) inside `runs/my_run/`, keeping your runs isolated.
 
