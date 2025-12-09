@@ -3,7 +3,7 @@
 
 # Processing options
 preprocess: "yes"   # run FastQC/MultiQC/Trim_Galore (yes/no)
-phylogeny: "yes"    # build alignment and tree (yes/no)
+phylogeny: "no"    # build alignment and tree (yes/no)
 
 # Directory paths (relative to working directory)
 data_dir: "data"                    # raw data directory

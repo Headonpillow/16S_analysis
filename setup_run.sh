@@ -1,6 +1,11 @@
 #!/bin/bash
 # setup_run.sh - Helper script to set up a new run directory
 
+# repository root (script directory)
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# default shared conda-prefix (can be overridden by exporting CONDA_PREFIX before running)
+CONDA_PREFIX="${CONDA_PREFIX:-${REPO_ROOT}/.snakemake/conda}"
+
 if [ -z "$1" ]; then
     echo "Usage: $0 <run_name>"
     echo "Example: $0 my_experiment"
@@ -29,4 +34,4 @@ echo ""
 echo "2. Edit ${RUN_DIR}/config.yaml if needed"
 echo ""
 echo "3. Run the pipeline:"
-echo "   snakemake --configfile ${RUN_DIR}/config.yaml --directory ${RUN_DIR} --use-conda --cores all all"
+echo "   snakemake --configfile ${RUN_DIR}/config.yaml --directory ${RUN_DIR} --use-conda --conda-prefix ${CONDA_PREFIX} --cores all all"
