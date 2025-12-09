@@ -80,7 +80,8 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
   err_forward_reads <- learnErrors(filtered_forward_reads, multithread = TRUE)
   err_reverse_reads <- learnErrors(filtered_reverse_reads, multithread = TRUE)
 
-  # TODO: pooling?
+  ## TODO: pooling?
+  ## TODO: implementing the possibility of allowing users to trim
   dada_forward <- dada(filtered_forward_reads, err = err_forward_reads, pool = TRUE, multithread = TRUE)
   dada_reverse <- dada(filtered_reverse_reads, err = err_reverse_reads, pool = TRUE, multithread = TRUE)
 
