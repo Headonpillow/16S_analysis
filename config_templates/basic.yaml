@@ -13,6 +13,7 @@ meta_subdir: "meta"                 # subdirectory with metadata files
 
 intermediate_dir: "intermediate"    # intermediate files directory
 results_dir: "results"              # results directory
+logs_dir: "logs"                    # logs directory
 
 # Database file (relative to data_dir/db_subdir)
 silva_db: "SILVA_SSU_r138_2_2024.RData"
