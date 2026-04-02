@@ -2,8 +2,8 @@
 # Copy this file to your run directory and customize as needed
 
 # Processing options
-preprocess: "yes"   # run FastQC/MultiQC/Trim_Galore (yes/no)
-phylogeny: "no"    # build alignment and tree (yes/no)
+preprocess: true   # run FastQC/MultiQC/Trim_Galore (true/false)
+phylogeny: false    # build alignment and tree (true/false)
 
 # Directory paths (relative to working directory)
 data_dir: "data"                    # raw data directory
