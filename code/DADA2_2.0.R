@@ -20,6 +20,8 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
   intermediate_path <- params[["intermediate_filtered_dir"]]  # intermediate/dada_filtered
 
   # Basic checks
+  # They are expected to be provided by Snakemake
+  # The checks are mostly needed when running the script interactively for debugging
   if (is.null(samples_file)) {
     stop("Missing required input: 'samples'")
   }
@@ -27,7 +29,8 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
     stop("Missing required outputs: expect names 'track','qc','seqtab'.")
   }
 
-  # Resolve paths
+  ### RESOLVE PATHS AND PREPARE INPUTS
+
   # Use the samples directory as general input path (it should have been created from previous scripts)
   input_path <- dirname(samples_file)
   # Ensure the samples directory and file exist before proceeding
@@ -43,11 +46,11 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
 
   # Deduplicate sample names if needed (filterAndTrim requires distinct output filenames)
   if (any(duplicated(samples))) {
-    warning(sprintf("Found %d duplicate sample name(s) in %s; keeping first occurrence of each sample.", sum(duplicated(samples)), samples_file))
+    warning(sprintf("Found %d duplicate sample name(s) in %s; keeping first occurrence of 
+    each sample. Please check your samples file for duplicates.", sum(duplicated(samples)), samples_file))
     samples <- unique(samples)
   }
 
-  # FILTERING
   # Build full paths for input fastq files (they live in the samples directory)
   forward_reads <- file.path(input_path, paste0(samples, ".R1.fastq.gz"))
   reverse_reads <- file.path(input_path, paste0(samples, ".R2.fastq.gz"))
@@ -61,7 +64,7 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
   filtered_forward_reads <- file.path(filtered_dir, paste0(samples, ".filtered.R1.fastq.gz"))
   filtered_reverse_reads <- file.path(filtered_dir, paste0(samples, ".filtered.R2.fastq.gz"))
   
-  # QUALITY PLOTS
+  ### PRODUCE QUALITY PLOTS FOR READS
   quality_plot <- function(data) {
     plot <- plotQualityProfile(data)
     return(plot)
@@ -70,13 +73,13 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
   fplots <- lapply(forward_reads, quality_plot)
   rplots <- lapply(reverse_reads, quality_plot)
 
-  # FILTERING
+  ### FILTERING
   filtered_out <- filterAndTrim(forward_reads, filtered_forward_reads, reverse_reads, filtered_reverse_reads, multithread = TRUE)
 
   filtered_forward_reads <- filtered_forward_reads[file.exists(filtered_forward_reads)]
   filtered_reverse_reads <- filtered_reverse_reads[file.exists(filtered_reverse_reads)]
 
-  # DENOISE
+  ### DENOISE
   err_forward_reads <- learnErrors(filtered_forward_reads, multithread = TRUE)
   err_reverse_reads <- learnErrors(filtered_reverse_reads, multithread = TRUE)
 
@@ -85,24 +88,24 @@ main <- function(input_paths = list(), output_paths = list(), params = list()) {
   dada_forward <- dada(filtered_forward_reads, err = err_forward_reads, pool = TRUE, multithread = TRUE)
   dada_reverse <- dada(filtered_reverse_reads, err = err_reverse_reads, pool = TRUE, multithread = TRUE)
 
-  # MERGE
+  ### MERGE
   merged_amplicons <- mergePairs(dada_forward, filtered_forward_reads, dada_reverse, filtered_reverse_reads, verbose = TRUE)
 
   seqtab <- makeSequenceTable(merged_amplicons)
 
-  # REMOVE SHORT SEQS
+  ### REMOVE SHORT SEQS
   seqtab2 <- seqtab[, nchar(colnames(seqtab)) %in% 350:470]
 
-  # CHIMERA REMOVAL
+  ### CHIMERA REMOVAL
   seqtab.nochim <- removeBimeraDenovo(seqtab2, verbose = TRUE, method = "consensus", multithread = TRUE)
 
-  ########### Outputs directory prepared above; do not change working directory
+  ########### Outputs directory prepared above
   # Ensure declared Snakemake output directories exist
   if (!is.null(track_out) && nzchar(track_out)) dir.create(dirname(track_out), recursive = TRUE, showWarnings = FALSE)
   if (!is.null(qc_out) && nzchar(qc_out)) dir.create(dirname(qc_out), recursive = TRUE, showWarnings = FALSE)
   if (!is.null(seqtab_out) && nzchar(seqtab_out)) dir.create(dirname(seqtab_out), recursive = TRUE, showWarnings = FALSE)
 
-  # PERFORMANCE ASSESSMENT
+  ### PERFORMANCE ASSESSMENT
   getN <- function(x) sum(getUniques(x))
 
   if (length(samples) != length(sapply(dada_reverse, getN))) {
